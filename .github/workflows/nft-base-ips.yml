@@ -36,24 +36,24 @@ jobs:
           # 匹配IPv6
           grep -E ':' "$TMP_CIDR" | grep / | sort -u > "$TMP6"
 
-          # 生成双栈的nft ip列表
+          # 生成双栈的 nft-base-ips.sh
           {
             echo "#!/bin/sh"
             echo -n "nft add element inet proxy ips { "
             paste -sd, "$TMP4"
-            echo -n " }"
+            echo " }"
             echo -n "nft add element inet proxy ips6 { "
             paste -sd, "$TMP6"
-            echo -n " }"
+            echo " }"
             true
           } > nft-base-ips.sh
-          
-          # 单独生成ipv4的nft ip列表防止某些机器不开启ipv6的情况
+
+          # 单独ipv4
           {
             echo "#!/bin/sh"
             echo -n "nft add element inet proxy ips { "
             paste -sd, "$TMP4"
-            echo -n " }"
+            echo " }"
             true
           } > nft-base-ips-v4.sh
 
