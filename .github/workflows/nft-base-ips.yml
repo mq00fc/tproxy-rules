@@ -5,7 +5,7 @@ permissions:
 
 on:
   schedule:
-    - cron: '0 0 * * *'     # 每天0点UTC
+    - cron: '0 0 * * *'    # 每天0点UTC
   workflow_dispatch:
 
 jobs:
@@ -26,14 +26,10 @@ jobs:
           TMP4=$(mktemp)
           TMP6=$(mktemp)
 
-          # Telegram
           curl -fsSL "https://core.telegram.org/resources/cidr.txt" | grep -Ev '^\s*#|^$' >> "$TMP_CIDR"
-
-          # Cloudflare
           curl -fsSL "https://api.cloudflare.com/client/v4/ips" | jq -r '.result.ipv4_cidrs // [] | .[]' >> "$TMP_CIDR"
           curl -fsSL "https://api.cloudflare.com/client/v4/ips" | jq -r '.result.ipv6_cidrs // [] | .[]' >> "$TMP_CIDR"
 
-          # Debug输出
           echo "====[DEBUG] $TMP_CIDR ===="
           cat "$TMP_CIDR"
           echo "==== END ===="
@@ -49,7 +45,8 @@ jobs:
             echo -n "nft add element inet proxy ips6 { "
             paste -sd, "$TMP6" || true
             echo " }"
-          } > nft-base-ips.sh || true
+            true
+          } > nft-base-ips.sh
 
           cat nft-base-ips.sh
 
