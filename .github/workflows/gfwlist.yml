@@ -1,0 +1,69 @@
+name: gfwlist
+
+on:
+  schedule:
+    - cron: '0 0 * * *'   # 每天0点
+  workflow_dispatch:
+
+jobs:
+  update-gfwlist:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+
+      - name: 安装依赖
+        run: sudo apt-get update && sudo apt-get install -y wget
+
+      - name: 生成 proxy-list.txt 和 direct-gfw.txt.txt
+        run: |
+          set -eo pipefail
+          
+          temp_gfwlist=$(mktemp)
+          temp_list=$(mktemp)
+          temp_lw=$(mktemp)
+          target_file="proxy-list.txt"
+          target_lw="direct-gfw.txt"
+
+          # 下载 GFWList
+          if ! wget --no-proxy -q -O "$temp_gfwlist" "https://raw.githubusercontent.com/gfwlist/gfwlist/master/gfwlist.txt"; then
+              echo "下载失败" >&2
+              rm -f "$temp_gfwlist" "$temp_list" "$temp_lw"
+              exit 1
+          fi
+
+          # 提取数据
+          base64 -d < "$temp_gfwlist" | tee >(
+              grep '^@@' | grep -v '^@@/' | \
+              sed -nE 's/^@@\|*\|*\*?(https?:\/\/)?([^\/^*]+).*/\2/p' | \
+              grep -Ev '^\s*$' | \
+              grep -Ev '^([0-9]{1,3}\.){3}[0-9]{1,3}$' | \
+              grep -Ev '^(http|https):' | \
+              sort -u > "$temp_lw"
+          ) | \
+          grep -vE '^!|^\[|^@@|^$|^/' | \
+          sed -nE 's/^\|*\|*\*?(https?:\/\/)?([^\/^*]+).*/\2/p' | \
+          grep -Ev '^\s*$' | \
+          grep -Ev '^([0-9]{1,3}\.){3}[0-9]{1,3}$' | \
+          grep -Ev '^(http|https):' | \
+          sort -u > "$temp_list"
+
+          # 检查输出有效
+          if [ ! -s "$temp_list" ]; then
+              echo "proxy-list.txt 为空，终止提交" >&2
+              rm -f "$temp_gfwlist" "$temp_list" "$temp_lw"
+              exit 1
+          fi
+
+          mv -f "$temp_list" "$target_file"
+          mv -f "$temp_lw" "$target_lw"
+
+          rm -f "$temp_gfwlist"
+
+      - name: 提交变更
+        run: |
+          git config --global user.name 'github-actions[bot]'
+          git config --global user.email 'github-actions[bot]@users.noreply.github.com'
+          git add proxy-list.txt direct-gfw.txt.txt
+          git commit -m 'chore: 自动同步最新 gfwlist 生成 proxy-list 和 direct-gfw 列表' || echo "Nothing to commit"
+          git push || echo "Nothing to push"
