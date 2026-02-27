@@ -1,8 +1,5 @@
 name: nft-base-ips
 
-permissions:
-  contents: write
-
 on:
   schedule:
     - cron: '0 0 * * *'    # 每天0点UTC
@@ -20,7 +17,7 @@ jobs:
 
       - name: 生成 nft-base-ips.sh
         run: |
-          set -xeo pipefail
+          set -eo pipefail
 
           TMP_CIDR=$(mktemp)
           TMP4=$(mktemp)
@@ -30,25 +27,15 @@ jobs:
           curl -fsSL "https://core.telegram.org/resources/cidr.txt" | grep -Ev '^\s*#|^$' >> "$TMP_CIDR"
 
           # Cloudflare
-          curl -fsSL "https://api.cloudflare.com/client/v4/ips" | jq -r '.result.ipv4_cidrs[]' >> "$TMP_CIDR"
-          curl -fsSL "https://api.cloudflare.com/client/v4/ips" | jq -r '.result.ipv6_cidrs[]' >> "$TMP_CIDR"
+          curl -fsSL "https://api.cloudflare.com/client/v4/ips" \
+            | jq -r '.result.ipv4_cidrs[], .result.ipv6_cidrs[]' >> "$TMP_CIDR"
 
-          # Google
-          curl -fsSL "https://www.gstatic.com/ipranges/goog.json" | jq -r '.prefixes[] | select(.ipv4Prefix != null) | .ipv4Prefix' >> "$TMP_CIDR"
-          curl -fsSL "https://www.gstatic.com/ipranges/goog.json" | jq -r '.prefixes[] | select(.ipv6Prefix != null) | .ipv6Prefix' >> "$TMP_CIDR"
-
-          # GitHub
-          curl -fsSL "https://api.github.com/meta" | jq -r '..|.[]?|select(type=="string")' | grep -E '^[0-9a-fA-F.:/]+$' >> "$TMP_CIDR"
-
-          echo "==== [DEBUG] CIDR原始内容，供grep调试：===="
-          cat "$TMP_CIDR"
-          echo "==== END ===="
-
-          # IPv4：更宽松正则，兼容所有标准IP/CIDR
-          grep -E '^([0-9]{1,3}\.){3}[0-9]{1,3}(/\d{1,2})?$' "$TMP_CIDR" | sort -u > "$TMP4"
-          # IPv6：有:和/即可
+          # 提取 IPv4 CIDR (带/，或标准IP)，且去重
+          grep -E '^[0-9]{1,3}(\.[0-9]{1,3}){3}(/\d{1,2})?$' "$TMP_CIDR" | sort -u > "$TMP4"
+          # 提取 IPv6 CIDR (有:和/)，且去重
           grep -E ':' "$TMP_CIDR" | grep / | sort -u > "$TMP6"
 
+          # 拼合nft规则文件
           {
             echo "#!/bin/sh"
             echo -n "nft add element inet proxy ips { "
@@ -58,7 +45,6 @@ jobs:
             paste -sd, "$TMP6"
             echo " }"
           } > nft-base-ips.sh
-
 
           rm -f "$TMP_CIDR" "$TMP4" "$TMP6"
 
