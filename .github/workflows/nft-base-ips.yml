@@ -5,7 +5,7 @@ permissions:
 
 on:
   schedule:
-    - cron: '0 0 * * *'    # 每天0点UTC
+    - cron: '0 0 * * *'    # 每天0点 UTC
   workflow_dispatch:
 
 jobs:
@@ -50,7 +50,7 @@ jobs:
 
           cat nft-base-ips.sh
 
-          rm -f "$TMP_CIDR" "$TMP4" "$TMP6"
+          rm -f "$TMP_CIDR" "$TMP4" "$TMP6" || true
 
       - name: 提交变更
         run: |
