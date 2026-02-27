@@ -1,12 +1,15 @@
 name: nft-base-ips
 
+permissions:
+  contents: write
+
 on:
   schedule:
-    - cron: '0 0 * * *' 
+    - cron: '0 0 * * *'    # 每天0点UTC
   workflow_dispatch:
 
 jobs:
-  update-nft-cloud-ips:
+  update-nft-base-ips:
     runs-on: ubuntu-latest
     steps:
       - name: 检出代码
@@ -15,7 +18,7 @@ jobs:
       - name: 安装依赖
         run: sudo apt-get update && sudo apt-get install -y curl jq
 
-      - name: 生成 nftables 代理规则
+      - name: 生成 nft-base-ips.sh
         run: |
           set -eo pipefail
 
@@ -23,28 +26,32 @@ jobs:
           TMP4=$(mktemp)
           TMP6=$(mktemp)
 
-          # Telegram，纯文本CIDR
+          # Telegram
           curl -fsSL "https://core.telegram.org/resources/cidr.txt" | grep -Ev '^\s*#|^$' >> "$TMP_CIDR"
 
-          # Cloudflare，JSON格式
+          # Cloudflare
           curl -fsSL "https://api.cloudflare.com/client/v4/ips" \
             | jq -r '.result.ipv4_cidrs[], .result.ipv6_cidrs[]' >> "$TMP_CIDR"
 
-          # Google，JSON格式
+          # Google IPv4
           curl -fsSL "https://www.gstatic.com/ipranges/goog.json" \
-            | jq -r '.prefixes[] | .ipv4Prefix?, .ipv6Prefix?' | grep -v null >> "$TMP_CIDR"
+            | jq -r '.prefixes[] | select(.ipv4Prefix != null) | .ipv4Prefix' >> "$TMP_CIDR"
+          # Google IPv6
+          curl -fsSL "https://www.gstatic.com/ipranges/goog.json" \
+            | jq -r '.prefixes[] | select(.ipv6Prefix != null) | .ipv6Prefix' >> "$TMP_CIDR"
 
           # GitHub
           curl -fsSL "https://api.github.com/meta" \
-            | jq -r '.git?,.copilot?,.web?  | select(.) | .[]' >> "$TMP_CIDR"
+            | jq -r '..|.[]?|select(type=="string")' | grep -E '^[0-9a-fA-F.:/]+$' >> "$TMP_CIDR"
 
-          # 抽取与去重
-          grep -E '^[0-9]{1,3}\.' "$TMP_CIDR" | sort -u > "$TMP4"
-          grep -E '^(?:[A-Fa-f0-9]{0,4}:){2,}' "$TMP_CIDR" | sort -u > "$TMP6"
+          # 提取 IPv4 CIDR (带/，或标准IP)，且去重
+          grep -E '^[0-9]{1,3}(\.[0-9]{1,3}){3}(/\d{1,2})?$' "$TMP_CIDR" | sort -u > "$TMP4"
+          # 提取 IPv6 CIDR (有:和/)，且去重
+          grep -E ':' "$TMP_CIDR" | grep / | sort -u > "$TMP6"
 
           # 拼合nft规则文件
           {
-            echo -n "#!/bin/sh"
+            echo "#!/bin/sh"
             echo -n "nft add element inet proxy ips { "
             paste -sd, "$TMP4"
             echo " }"
