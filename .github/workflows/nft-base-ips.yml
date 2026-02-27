@@ -1,0 +1,64 @@
+name: nft-base-ips
+
+on:
+  schedule:
+    - cron: '0 0 * * *' 
+  workflow_dispatch:
+
+jobs:
+  update-nft-cloud-ips:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+
+      - name: 安装依赖
+        run: sudo apt-get update && sudo apt-get install -y curl jq
+
+      - name: 生成 nftables 代理规则
+        run: |
+          set -eo pipefail
+
+          TMP_CIDR=$(mktemp)
+          TMP4=$(mktemp)
+          TMP6=$(mktemp)
+
+          # Telegram，纯文本CIDR
+          curl -fsSL "https://core.telegram.org/resources/cidr.txt" | grep -Ev '^\s*#|^$' >> "$TMP_CIDR"
+
+          # Cloudflare，JSON格式
+          curl -fsSL "https://api.cloudflare.com/client/v4/ips" \
+            | jq -r '.result.ipv4_cidrs[], .result.ipv6_cidrs[]' >> "$TMP_CIDR"
+
+          # Google，JSON格式
+          curl -fsSL "https://www.gstatic.com/ipranges/goog.json" \
+            | jq -r '.prefixes[] | .ipv4Prefix?, .ipv6Prefix?' | grep -v null >> "$TMP_CIDR"
+
+          # GitHub
+          curl -fsSL "https://api.github.com/meta" \
+            | jq -r '.git?,.copilot?,.web?  | select(.) | .[]' >> "$TMP_CIDR"
+
+          # 抽取与去重
+          grep -E '^[0-9]{1,3}\.' "$TMP_CIDR" | sort -u > "$TMP4"
+          grep -E '^(?:[A-Fa-f0-9]{0,4}:){2,}' "$TMP_CIDR" | sort -u > "$TMP6"
+
+          # 拼合nft规则文件
+          {
+            echo -n "#!/bin/sh"
+            echo -n "nft add element inet proxy ips { "
+            paste -sd, "$TMP4"
+            echo " }"
+            echo -n "nft add element inet proxy ips6 { "
+            paste -sd, "$TMP6"
+            echo " }"
+          } > nft-base-ips.sh
+
+          rm -f "$TMP_CIDR" "$TMP4" "$TMP6"
+
+      - name: 提交变更
+        run: |
+          git config --global user.name 'github-actions[bot]'
+          git config --global user.email 'github-actions[bot]@users.noreply.github.com'
+          git add nft-base-ips.sh
+          git commit -m 'chore: 自动同步最新云服务CIDR为nft规则' || echo "Nothing to commit"
+          git push || echo "Nothing to push"
