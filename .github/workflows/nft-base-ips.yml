@@ -1,63 +1,36 @@
-name: nft-base-ips
+- name: 生成 nft-base-ips.sh
+  run: |
+    set -eo pipefail
 
-permissions:
-  contents: write
+    TMP_CIDR=$(mktemp)
+    TMP4=$(mktemp)
+    TMP6=$(mktemp)
 
-on:
-  schedule:
-    - cron: '0 0 * * *'
-  workflow_dispatch:
+    # Telegram
+    curl -fsSL "https://core.telegram.org/resources/cidr.txt" | grep -Ev '^\s*#|^$' >> "$TMP_CIDR"
 
-jobs:
-  update-nft-base-ips:
-    runs-on: ubuntu-latest
-    steps:
-      - name: 检出代码
-        uses: actions/checkout@v4
+    # Cloudflare
+    curl -fsSL "https://api.cloudflare.com/client/v4/ips" | jq -r '.result.ipv4_cidrs // [] | .[]' >> "$TMP_CIDR"
+    curl -fsSL "https://api.cloudflare.com/client/v4/ips" | jq -r '.result.ipv6_cidrs // [] | .[]' >> "$TMP_CIDR"
 
-      - name: 安装依赖
-        run: sudo apt-get update && sudo apt-get install -y curl jq
+    # Debug
+    echo "====[DEBUG] $TMP_CIDR ===="
+    cat "$TMP_CIDR"
+    echo "==== END ===="
 
-      - name: 生成 nft-base-ips.sh
-        run: |
-          set -eo pipefail
+    grep -E '^([0-9]{1,3}\.){3}[0-9]{1,3}(/\d{1,2})?$' "$TMP_CIDR" | sort -u > "$TMP4"
+    grep -E ':' "$TMP_CIDR" | grep / | sort -u > "$TMP6"
 
-          TMP_CIDR=$(mktemp)
-          TMP4=$(mktemp)
-          TMP6=$(mktemp)
+    {
+      echo "#!/bin/sh"
+      echo -n "nft add element inet proxy ips { "
+      paste -sd, "$TMP4" || true
+      echo " }"
+      echo -n "nft add element inet proxy ips6 { "
+      paste -sd, "$TMP6" || true
+      echo " }"
+    } > nft-base-ips.sh || true
 
-          # Telegram
-          curl -fsSL "https://core.telegram.org/resources/cidr.txt" | grep -Ev '^\s*#|^$' >> "$TMP_CIDR"
+    cat nft-base-ips.sh
 
-          # Cloudflare
-          curl -fsSL "https://api.cloudflare.com/client/v4/ips" | jq -r '.result.ipv4_cidrs // [] | .[]' >> "$TMP_CIDR"
-          curl -fsSL "https://api.cloudflare.com/client/v4/ips" | jq -r '.result.ipv6_cidrs // [] | .[]' >> "$TMP_CIDR"
-
-          # Debug
-          echo "====[DEBUG] $TMP_CIDR ===="
-          cat "$TMP_CIDR"
-          echo "==== END ===="
-
-          # 提取
-          grep -E '^([0-9]{1,3}\.){3}[0-9]{1,3}(/\d{1,2})?$' "$TMP_CIDR" | sort -u > "$TMP4"
-          grep -E ':' "$TMP_CIDR" | grep / | sort -u > "$TMP6"
-
-          {
-            echo "#!/bin/sh"
-            echo -n "nft add element inet proxy ips { "
-            paste -sd, "$TMP4" || true
-            echo " }"
-            echo -n "nft add element inet proxy ips6 { "
-            paste -sd, "$TMP6" || true
-            echo " }"
-          } > nft-base-ips.sh
-
-          rm -f "$TMP_CIDR" "$TMP4" "$TMP6"
-
-      - name: 提交变更
-        run: |
-          git config --global user.name 'github-actions[bot]'
-          git config --global user.email 'github-actions[bot]@users.noreply.github.com'
-          git add nft-base-ips.sh
-          git commit -m 'chore: 自动同步最新云服务CIDR为nft规则' || echo "Nothing to commit"
-          git push || echo "Nothing to push"
+    rm -f "$TMP_CIDR" "$TMP4" "$TMP6"
