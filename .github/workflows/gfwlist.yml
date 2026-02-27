@@ -64,6 +64,6 @@ jobs:
         run: |
           git config --global user.name 'github-actions[bot]'
           git config --global user.email 'github-actions[bot]@users.noreply.github.com'
-          git add proxy-list.txt direct-gfw.txt.txt
+          git add proxy-list.txt direct-gfw.txt
           git commit -m 'chore: 自动同步最新 gfwlist 生成 proxy-list 和 direct-gfw 列表' || echo "Nothing to commit"
           git push || echo "Nothing to push"
