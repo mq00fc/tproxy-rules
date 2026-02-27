@@ -20,7 +20,6 @@ jobs:
 
       - name: 生成 nft-base-ips.sh
         run: |
-          set -eo pipefail
 
           TMP_CIDR=$(mktemp)
           TMP4=$(mktemp)
