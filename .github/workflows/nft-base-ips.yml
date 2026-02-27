@@ -1,11 +1,8 @@
 name: nft-base-ips
 
-permissions:
-  contents: write
-
 on:
   schedule:
-    - cron: '0 0 * * *'    # 每天0点UTC
+    - cron: '0 0 * * *'    # 每天0点
   workflow_dispatch:
 
 jobs:
@@ -20,34 +17,51 @@ jobs:
 
       - name: 生成 nft-base-ips.sh
         run: |
-          set -eo pipefail
+          set -xeo pipefail
 
           TMP_CIDR=$(mktemp)
           TMP4=$(mktemp)
           TMP6=$(mktemp)
 
           # Telegram
-          curl -fsSL "https://core.telegram.org/resources/cidr.txt" | grep -Ev '^\s*#|^$' >> "$TMP_CIDR"
+          if ! curl -fsSL "https://core.telegram.org/resources/cidr.txt" | grep -Ev '^\s*#|^$' >> "$TMP_CIDR"; then
+            echo "拉取Telegram CIDR失败" >&2
+            exit 1
+          fi
 
-          # Cloudflare
-          curl -fsSL "https://api.cloudflare.com/client/v4/ips" \
-            | jq -r '.result.ipv4_cidrs[], .result.ipv6_cidrs[]' >> "$TMP_CIDR"
+          # Cloudflare - 拆开提取防止结果null炸掉
+          if ! curl -fsSL "https://api.cloudflare.com/client/v4/ips" | jq -r '.result.ipv4_cidrs[]' >> "$TMP_CIDR"; then
+            echo "拉取Cloudflare IPv4失败" >&2
+            exit 1
+          fi
+          if ! curl -fsSL "https://api.cloudflare.com/client/v4/ips" | jq -r '.result.ipv6_cidrs[]' >> "$TMP_CIDR"; then
+            echo "拉取Cloudflare IPv6失败" >&2
+            exit 1
+          fi
 
           # Google IPv4
-          curl -fsSL "https://www.gstatic.com/ipranges/goog.json" \
-            | jq -r '.prefixes[] | select(.ipv4Prefix != null) | .ipv4Prefix' >> "$TMP_CIDR"
+          if ! curl -fsSL "https://www.gstatic.com/ipranges/goog.json" | jq -r '.prefixes[] | select(.ipv4Prefix != null) | .ipv4Prefix' >> "$TMP_CIDR"; then
+            echo "拉取Google IPv4失败" >&2
+            exit 1
+          fi
           # Google IPv6
-          curl -fsSL "https://www.gstatic.com/ipranges/goog.json" \
-            | jq -r '.prefixes[] | select(.ipv6Prefix != null) | .ipv6Prefix' >> "$TMP_CIDR"
+          if ! curl -fsSL "https://www.gstatic.com/ipranges/goog.json" | jq -r '.prefixes[] | select(.ipv6Prefix != null) | .ipv6Prefix' >> "$TMP_CIDR"; then
+            echo "拉取Google IPv6失败" >&2
+            exit 1
+          fi
 
           # GitHub
-          curl -fsSL "https://api.github.com/meta" \
-            | jq -r '..|.[]?|select(type=="string")' | grep -E '^[0-9a-fA-F.:/]+$' >> "$TMP_CIDR"
+          if ! curl -fsSL "https://api.github.com/meta" \
+            | jq -r '..|.[]?|select(type=="string")' \
+            | grep -E '^[0-9a-fA-F.:/]+$' >> "$TMP_CIDR"; then
+            echo "拉取GitHub CIDR失败" >&2
+            exit 1
+          fi
 
-          # 提取 IPv4 CIDR (带/，或标准IP)，且去重
-          grep -E '^[0-9]{1,3}(\.[0-9]{1,3}){3}(/\d{1,2})?$' "$TMP_CIDR" | sort -u > "$TMP4"
-          # 提取 IPv6 CIDR (有:和/)，且去重
-          grep -E ':' "$TMP_CIDR" | grep / | sort -u > "$TMP6"
+          # 提取 IPv4 CIDR
+          grep -E '^[0-9]{1,3}(\.[0-9]{1,3}){3}(/\d{1,2})?$' "$TMP_CIDR" | sort -u > "$TMP4" || true
+          # 提取 IPv6 CIDR
+          grep -E ':' "$TMP_CIDR" | grep / | sort -u > "$TMP6" || true
 
           # 拼合nft规则文件
           {
