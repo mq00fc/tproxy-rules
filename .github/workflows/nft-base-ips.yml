@@ -35,6 +35,7 @@ jobs:
           curl -fsSL "https://api.cloudflare.com/client/v4/ips" | jq -r '.result.ipv4_cidrs // [] | .[]' | sort -u > "$TMP_CF4"
           curl -fsSL "https://api.cloudflare.com/client/v4/ips" | jq -r '.result.ipv6_cidrs // [] | .[]' | sort -u > "$TMP_CF6"
 
+          # 双栈
           {
             echo "#!/bin/sh"
             echo "# TG"
@@ -44,6 +45,15 @@ jobs:
             echo "nft add element inet proxy ips { $(paste -sd, "$TMP_CF4") }"
             echo "nft add element inet proxy ips6 { $(paste -sd, "$TMP_CF6") }"
           } > nft-base-ips.sh
+          
+          # 单独生成ipv4 only解决部分机器不支持ipv6的问题
+          {
+            echo "#!/bin/sh"
+            echo "# TG"
+            echo "nft add element inet proxy ips { $(paste -sd, "$TMP_TG4") }"
+            echo "# Cloudflare"
+            echo "nft add element inet proxy ips { $(paste -sd, "$TMP_CF4") }"
+          } > nft-base-ips-v4.sh
 
           rm -f "$TMP_TG4" "$TMP_TG6" "$TMP_CF4" "$TMP_CF6"
 
