@@ -31,35 +31,40 @@ jobs:
           curl -fsSL "https://api.cloudflare.com/client/v4/ips" | jq -r '.result.ipv4_cidrs // [] | .[]' >> "$TMP_CIDR"
           curl -fsSL "https://api.cloudflare.com/client/v4/ips" | jq -r '.result.ipv6_cidrs // [] | .[]' >> "$TMP_CIDR"
 
-          # Debug输出
-          echo "====[DEBUG] $TMP_CIDR ===="
-          cat "$TMP_CIDR"
-          echo "==== END ===="
-
           # 用兼容所有 grep 的正则匹配IPv4
           grep -E '^([0-9]{1,3}\.){3}[0-9]{1,3}(\/[0-9]{1,2})?$' "$TMP_CIDR" | sort -u > "$TMP4"
           # 匹配IPv6
           grep -E ':' "$TMP_CIDR" | grep / | sort -u > "$TMP6"
 
+          # 生成双栈的nft ip列表
           {
             echo "#!/bin/sh"
             echo -n "nft add element inet proxy ips { "
-            paste -sd, "$TMP4" || true
-            echo " }"
+            paste -sd, "$TMP4"
+            echo -n " }"
             echo -n "nft add element inet proxy ips6 { "
-            paste -sd, "$TMP6" || true
-            echo " }"
+            paste -sd, "$TMP6"
+            echo -n " }"
             true
           } > nft-base-ips.sh
+          
+          # 单独生成ipv4的nft ip列表防止某些机器不开启ipv6的情况
+          {
+            echo "#!/bin/sh"
+            echo -n "nft add element inet proxy ips { "
+            paste -sd, "$TMP4"
+            echo -n " }"
+            true
+          } > nft-base-ips-v4.sh
 
           cat nft-base-ips.sh
-
-          rm -f "$TMP_CIDR" "$TMP4" "$TMP6" || true
+          
+          rm -f "$TMP_CIDR" "$TMP4" "$TMP6"
 
       - name: 提交变更
         run: |
           git config --global user.name 'github-actions[bot]'
           git config --global user.email 'github-actions[bot]@users.noreply.github.com'
-          git add nft-base-ips.sh
-          git commit -m 'chore: 自动同步最新云服务CIDR为nft规则' || true
-          git push || true
+          git add nft-base-ips.sh nft-base-ips-v4.sh
+          git commit -m 'chore: 自动同步最新云服务CIDR为nft规则'
+          git push
