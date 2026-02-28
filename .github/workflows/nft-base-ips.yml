@@ -43,9 +43,14 @@ jobs:
           curl -fsSL "https://core.telegram.org/resources/cidr.txt" |
             grep ':' | grep / | sort -u > "$TMP_TG6"
 
-          # Cloudflare 官网API
-          curl -fsSL "https://api.cloudflare.com/client/v4/ips" | jq -r '.result.ipv4_cidrs // [] | .[]' | sort -u > "$TMP_CF4"
-          curl -fsSL "https://api.cloudflare.com/client/v4/ips" | jq -r '.result.ipv6_cidrs // [] | .[]' | sort -u > "$TMP_CF6"
+          # Cloudflare
+          curl -fsSL "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/refs/heads/sing/geo/geoip/cloudflare.json" |
+            jq -r '[.rules[].ip_cidr[]] | .[]' |
+            grep -E '^([0-9]{1,3}\.){3}[0-9]{1,3}(\/[0-9]{1,2})?$' |
+            sort -u > "$TMP_CF4"
+          curl -fsSL "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/refs/heads/sing/geo/geoip/cloudflare.json" |
+            jq -r '[.rules[].ip_cidr[]] | .[]' |
+            grep ':' | sort -u > "$TMP_CF6"
 
           # GitHub
           curl -fsSL "https://api.github.com/meta" | jq -r '.git[]' | sort -u > "$TMP_GIT_ALL"
