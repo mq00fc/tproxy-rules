@@ -2,7 +2,7 @@ name: nft-base-ips
 
 on:
   schedule:
-    - cron: '0 0,8 * * *'
+    - cron: "0 23 * * *" # 7:00 AM UTC+8
   workflow_dispatch:
 
 jobs:
