@@ -1,11 +1,8 @@
 name: nft-base-ips
 
-permissions:
-  contents: write
-
 on:
   schedule:
-    - cron: '0 0 * * *'
+    - cron: '0 0,8 * * *'
   workflow_dispatch:
 
 jobs:
