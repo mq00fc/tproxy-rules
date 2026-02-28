@@ -31,6 +31,8 @@ jobs:
           TMP_GOOGLE6=$(mktemp)
           TMP_FACEBOOK4=$(mktemp)
           TMP_FACEBOOK6=$(mktemp)
+          TMP_CFJSON4=$(mktemp)
+          TMP_CFJSON6=$(mktemp)
 
           # TG
           curl -fsSL "https://core.telegram.org/resources/cidr.txt" |
@@ -40,7 +42,7 @@ jobs:
           curl -fsSL "https://core.telegram.org/resources/cidr.txt" |
             grep ':' | grep / | sort -u > "$TMP_TG6"
 
-          # Cloudflare
+          # Cloudflare 官网API
           curl -fsSL "https://api.cloudflare.com/client/v4/ips" | jq -r '.result.ipv4_cidrs // [] | .[]' | sort -u > "$TMP_CF4"
           curl -fsSL "https://api.cloudflare.com/client/v4/ips" | jq -r '.result.ipv6_cidrs // [] | .[]' | sort -u > "$TMP_CF6"
 
@@ -67,6 +69,15 @@ jobs:
             jq -r '[.rules[].ip_cidr[]] | .[]' |
             grep ':' | sort -u > "$TMP_FACEBOOK6"
 
+          # CloudFront
+          curl -fsSL "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/refs/heads/sing/geo/geoip/cloudfront.json" |
+            jq -r '[.rules[].ip_cidr[]] | .[]' |
+            grep -E '^([0-9]{1,3}\.){3}[0-9]{1,3}(\/[0-9]{1,2})?$' |
+            sort -u > "$TMP_CFJSON4"
+          curl -fsSL "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/refs/heads/sing/geo/geoip/cloudfront.json" |
+            jq -r '[.rules[].ip_cidr[]] | .[]' |
+            grep ':' | sort -u > "$TMP_CFJSON6"
+
           {
             echo "#!/bin/sh"
             echo "# TG"
@@ -84,6 +95,9 @@ jobs:
             echo "# Facebook"
             echo "nft add element inet proxy ips { $(paste -sd, "$TMP_FACEBOOK4") }"
             echo "nft add element inet proxy ips6 { $(paste -sd, "$TMP_FACEBOOK6") }"
+            echo "# CloudFront"
+            echo "nft add element inet proxy ips { $(paste -sd, "$TMP_CFJSON4") }"
+            echo "nft add element inet proxy ips6 { $(paste -sd, "$TMP_CFJSON6") }"
           } > nft-base-ips.sh
 
           # 仅v4
@@ -99,9 +113,11 @@ jobs:
             echo "nft add element inet proxy ips { $(paste -sd, "$TMP_GOOGLE4") }"
             echo "# Facebook"
             echo "nft add element inet proxy ips { $(paste -sd, "$TMP_FACEBOOK4") }"
+            echo "# CloudFront"
+            echo "nft add element inet proxy ips { $(paste -sd, "$TMP_CFJSON4") }"
           } > nft-base-ips-v4.sh
 
-          rm -f "$TMP_TG4" "$TMP_TG6" "$TMP_CF4" "$TMP_CF6" "$TMP_GIT_ALL" "$TMP_GIT4" "$TMP_GIT6" "$TMP_GOOGLE4" "$TMP_GOOGLE6" "$TMP_FACEBOOK4" "$TMP_FACEBOOK6"
+          rm -f "$TMP_TG4" "$TMP_TG6" "$TMP_CF4" "$TMP_CF6" "$TMP_GIT_ALL" "$TMP_GIT4" "$TMP_GIT6" "$TMP_GOOGLE4" "$TMP_GOOGLE6" "$TMP_FACEBOOK4" "$TMP_FACEBOOK6" "$TMP_CFJSON4" "$TMP_CFJSON6"
 
       - name: 提交变更
         run: |
