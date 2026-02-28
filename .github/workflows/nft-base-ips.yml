@@ -33,6 +33,8 @@ jobs:
           TMP_FACEBOOK6=$(mktemp)
           TMP_CFJSON4=$(mktemp)
           TMP_CFJSON6=$(mktemp)
+          TMP_NETFLIX4=$(mktemp)
+          TMP_NETFLIX6=$(mktemp)
 
           # TG
           curl -fsSL "https://core.telegram.org/resources/cidr.txt" |
@@ -78,6 +80,15 @@ jobs:
             jq -r '[.rules[].ip_cidr[]] | .[]' |
             grep ':' | sort -u > "$TMP_CFJSON6"
 
+          # Netflix
+          curl -fsSL "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/refs/heads/sing/geo/geoip/netflix.json" |
+            jq -r '[.rules[].ip_cidr[]] | .[]' |
+            grep -E '^([0-9]{1,3}\.){3}[0-9]{1,3}(\/[0-9]{1,2})?$' |
+            sort -u > "$TMP_NETFLIX4"
+          curl -fsSL "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/refs/heads/sing/geo/geoip/netflix.json" |
+            jq -r '[.rules[].ip_cidr[]] | .[]' |
+            grep ':' | sort -u > "$TMP_NETFLIX6"
+
           {
             echo "#!/bin/sh"
             echo "# TG"
@@ -98,6 +109,9 @@ jobs:
             echo "# CloudFront"
             echo "nft add element inet proxy ips { $(paste -sd, "$TMP_CFJSON4") }"
             echo "nft add element inet proxy ips6 { $(paste -sd, "$TMP_CFJSON6") }"
+            echo "# Netflix"
+            echo "nft add element inet proxy ips { $(paste -sd, "$TMP_NETFLIX4") }"
+            echo "nft add element inet proxy ips6 { $(paste -sd, "$TMP_NETFLIX6") }"
           } > nft-base-ips.sh
 
           # 仅v4
@@ -115,9 +129,11 @@ jobs:
             echo "nft add element inet proxy ips { $(paste -sd, "$TMP_FACEBOOK4") }"
             echo "# CloudFront"
             echo "nft add element inet proxy ips { $(paste -sd, "$TMP_CFJSON4") }"
+            echo "# Netflix"
+            echo "nft add element inet proxy ips { $(paste -sd, "$TMP_NETFLIX4") }"
           } > nft-base-ips-v4.sh
 
-          rm -f "$TMP_TG4" "$TMP_TG6" "$TMP_CF4" "$TMP_CF6" "$TMP_GIT_ALL" "$TMP_GIT4" "$TMP_GIT6" "$TMP_GOOGLE4" "$TMP_GOOGLE6" "$TMP_FACEBOOK4" "$TMP_FACEBOOK6" "$TMP_CFJSON4" "$TMP_CFJSON6"
+          rm -f "$TMP_TG4" "$TMP_TG6" "$TMP_CF4" "$TMP_CF6" "$TMP_GIT_ALL" "$TMP_GIT4" "$TMP_GIT6" "$TMP_GOOGLE4" "$TMP_GOOGLE6" "$TMP_FACEBOOK4" "$TMP_FACEBOOK6" "$TMP_CFJSON4" "$TMP_CFJSON6" "$TMP_NETFLIX4" "$TMP_NETFLIX6"
 
       - name: 提交变更
         run: |
