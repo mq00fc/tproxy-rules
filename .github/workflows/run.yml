@@ -3,7 +3,7 @@ name: Run All
 on:
   workflow_dispatch:
   schedule:
-    - cron: "0 0,12 * * *" 
+    - cron: "0 23,8 * * *" 
 
 jobs:
   update-adblock-plus:  # 来自 adblock-plus.yml
