@@ -6,6 +6,7 @@ cdn.ampproject.org
 checkin.gstatic.com
 ci.android.com
 clientservices.googleapis.com
+cn.investing.com
 connectivitycheck.gstatic.com
 crl.pki.goog
 csi.gstatic.com
