@@ -307,3 +307,85 @@ jobs:
           git add proxy-plus.txt
           git commit -m 'feat: 自动生成 proxy-plus 域名规则' || true
           git push || true
+
+  update-mihomo:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+      - name: 安装依赖
+        run: sudo apt-get update && sudo apt-get install -y curl wget
+      - name: 创建 mihomo 目录
+        run: mkdir -p mihomo
+      - name: 生成 mihomo/ad.list
+        run: |
+          set -eo pipefail
+          curl -s "https://raw.githubusercontent.com/TG-Twilight/AWAvenue-Ads-Rule/main/AWAvenue-Ads-Rule.txt" | \
+            grep -Ev '^[@#!;[]' | \
+            grep -Ev '^\s*$' | \
+            grep -Ev '\*' | \
+            grep -Ev '/.*' | \
+            awk '{
+              line = $0
+              if (line ~ /^\|\|/) {
+                gsub(/^\|\|/, "", line)
+                gsub(/\^(\$important)?$/, "", line)
+                if (line != "") print "DOMAIN-SUFFIX," line
+              } else {
+                gsub(/^\|+/, "", line)
+                if (line != "") print "DOMAIN," line
+              }
+            }' | \
+            sort -u > mihomo/ad.list
+      - name: 生成 mihomo/proxy.list 和 mihomo/direct.list
+        run: |
+          set -eo pipefail
+          temp_gfwlist=$(mktemp)
+          temp_proxy=$(mktemp)
+          temp_direct=$(mktemp)
+          wget --no-proxy -q -O "$temp_gfwlist" "https://raw.githubusercontent.com/gfwlist/gfwlist/master/gfwlist.txt"
+          base64 -d < "$temp_gfwlist" | tee >(
+            grep '^@@' | grep -v '^@@/' | \
+            sed -nE 's/^@@\|*\|*\*?(https?:\/\/)?([^\/^*]+).*/\2/p' | \
+            grep -Ev '^\s*$' | \
+            grep -Ev '^([0-9]{1,3}\.){3}[0-9]{1,3}$' | \
+            grep -Ev '^(http|https):' | \
+            sort -u | \
+            awk '{print "DOMAIN-SUFFIX," $0}' > "$temp_direct"
+          ) | \
+          grep -vE '^!|^\[|^@@|^$|^/' | \
+          sed -nE 's/^\|*\|*\*?(https?:\/\/)?([^\/^*]+).*/\2/p' | \
+          grep -Ev '^\s*$' | \
+          grep -Ev '^([0-9]{1,3}\.){3}[0-9]{1,3}$' | \
+          grep -Ev '^(http|https):' | \
+          sort -u | \
+          awk '{print "DOMAIN-SUFFIX," $0}' > "$temp_proxy"
+          mv -f "$temp_proxy" mihomo/proxy.list
+          mv -f "$temp_direct" mihomo/direct.list
+          rm -f "$temp_gfwlist"
+      - name: 生成 mihomo/proxy-plus.list
+        run: |
+          {
+            curl -s https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Clash/TikTok/TikTok.list | grep -E '^DOMAIN,|^DOMAIN-SUFFIX,'
+            curl -s https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Clash/Disney/Disney.list | grep -E '^DOMAIN,|^DOMAIN-SUFFIX,'
+            curl -s https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Clash/Netflix/Netflix.list | grep -E '^DOMAIN,|^DOMAIN-SUFFIX,'
+            curl -s https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Clash/GitHub/GitHub.list | grep -E '^DOMAIN,|^DOMAIN-SUFFIX,'
+            curl -s https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Clash/Facebook/Facebook.list | grep -E '^DOMAIN,|^DOMAIN-SUFFIX,'
+            curl -s https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Clash/Twitter/Twitter.list | grep -E '^DOMAIN,|^DOMAIN-SUFFIX,'
+            curl -s https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Clash/Twitch/Twitch.list | grep -E '^DOMAIN,|^DOMAIN-SUFFIX,'
+            curl -s https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Clash/Spotify/Spotify.list | grep -E '^DOMAIN,|^DOMAIN-SUFFIX,'
+            curl -s https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Clash/Reddit/Reddit.list | grep -E '^DOMAIN,|^DOMAIN-SUFFIX,'
+            curl -s https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Clash/Telegram/Telegram.list | grep -E '^DOMAIN,|^DOMAIN-SUFFIX,'
+            curl -s https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Clash/Ubuntu/Ubuntu.list | grep -E '^DOMAIN,|^DOMAIN-SUFFIX,'
+            curl -s https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Clash/Amazon/Amazon.list | grep -E '^DOMAIN,|^DOMAIN-SUFFIX,'
+            curl -s https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Clash/Disqus/Disqus.list | grep -E '^DOMAIN,|^DOMAIN-SUFFIX,'
+            curl -s https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Clash/Bahamut/Bahamut.list | grep -E '^DOMAIN,|^DOMAIN-SUFFIX,'
+            curl -s https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Clash/Python/Python.list | grep -E '^DOMAIN,|^DOMAIN-SUFFIX,'
+          } | sort | uniq | grep -v "\.cn$" > mihomo/proxy-plus.list
+      - name: 提交变更
+        run: |
+          git config --global user.name 'github-actions[bot]'
+          git config --global user.email 'github-actions[bot]@users.noreply.github.com'
+          git add mihomo/
+          git commit -m 'feat: 自动生成 mihomo 规则文件' || echo "Nothing to commit"
+          git push || echo "Nothing to push"
