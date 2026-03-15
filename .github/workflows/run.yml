@@ -95,7 +95,7 @@ jobs:
             # ||domain^ 或 ||domain — 域名后缀匹配
             if (line ~ /^\|\|/) {
               gsub(/^\|\|/, "", line)
-              gsub(/\/.*", "", line)
+              gsub(/\/.*/, "", line)
               gsub(/\^.*/, "", line)
               if (line != "" && line !~ /^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$/ && line !~ /^(http|https):/)
                 print "domain:" line
@@ -104,7 +104,7 @@ jobs:
             # |http://domain 或 |https://domain — URL前缀精确匹配
             if (line ~ /^\|https?:\/\//) {
               gsub(/^\|https?:\/\//, "", line)
-              gsub(/\/.*", "", line)
+              gsub(/\/.*/, "", line)
               gsub(/\^.*/, "", line)
               if (line != "" && line !~ /^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$/ && line !~ /^(http|https):/)
                 print "full:" line
@@ -113,14 +113,14 @@ jobs:
             # .domain.com — 以点开头，等同于后缀匹配
             if (line ~ /^\./) {
               gsub(/^\./, "", line)
-              gsub(/\/.*", "", line)
+              gsub(/\/.*/, "", line)
               gsub(/\^.*/, "", line)
               if (line != "" && line !~ /^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$/ && line !~ /^(http|https):/)
                 print "domain:" line
               next
             }
             # 裸域名/关键词 — 判断是否像完整域名
-            gsub(/\/.*", "", line)
+            gsub(/\/.*/, "", line)
             gsub(/\^.*/, "", line)
             if (line != "" && line !~ /^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$/ && line !~ /^(http|https):/) {
               # 包含点号的视为完整域名 → full精确匹配
@@ -142,7 +142,7 @@ jobs:
             # @@||domain — 白名单后缀匹配
             if (line ~ /^@@\|\|/) {
               gsub(/^@@\|\|/, "", line)
-              gsub(/\/.*", "", line)
+              gsub(/\/.*/, "", line)
               gsub(/\^.*/, "", line)
               if (line != "" && line !~ /^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$/ && line !~ /^(http|https):/)
                 print "domain:" line
@@ -151,7 +151,7 @@ jobs:
             # @@|http://domain — 白名单精确匹配
             if (line ~ /^@@\|https?:\/\//) {
               gsub(/^@@\|https?:\/\//, "", line)
-              gsub(/\/.*", "", line)
+              gsub(/\/.*/, "", line)
               gsub(/\^.*/, "", line)
               if (line != "" && line !~ /^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$/ && line !~ /^(http|https):/)
                 print "full:" line
@@ -160,7 +160,7 @@ jobs:
             # @@.domain — 白名单后缀匹配
             if (line ~ /^@@\./) {
               gsub(/^@@\./, "", line)
-              gsub(/\/.*", "", line)
+              gsub(/\/.*/, "", line)
               gsub(/\^.*/, "", line)
               if (line != "" && line !~ /^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$/ && line !~ /^(http|https):/)
                 print "domain:" line
@@ -168,7 +168,7 @@ jobs:
             }
             # @@domain — 白名单裸域名
             gsub(/^@@/, "", line)
-            gsub(/\/.*", "", line)
+            gsub(/\/.*/, "", line)
             gsub(/\^.*/, "", line)
             if (line != "" && line !~ /^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$/ && line !~ /^(http|https):/) {
               if (line ~ /\./)
@@ -459,7 +459,7 @@ jobs:
             # ||domain — DOMAIN-SUFFIX
             if (line ~ /^\|\|/) {
               gsub(/^\|\|/, "", line)
-              gsub(/\/.*", "", line)
+              gsub(/\/.*/, "", line)
               gsub(/\^.*/, "", line)
               if (line != "" && line !~ /^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$/ && line !~ /^(http|https):/)
                 print "DOMAIN-SUFFIX," line
@@ -468,7 +468,7 @@ jobs:
             # |http://domain — DOMAIN (精确匹配)
             if (line ~ /^\|https?:\/\//) {
               gsub(/^\|https?:\/\//, "", line)
-              gsub(/\/.*", "", line)
+              gsub(/\/.*/, "", line)
               gsub(/\^.*/, "", line)
               if (line != "" && line !~ /^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$/ && line !~ /^(http|https):/)
                 print "DOMAIN," line
@@ -477,14 +477,14 @@ jobs:
             # .domain — DOMAIN-SUFFIX
             if (line ~ /^\./) {
               gsub(/^\./, "", line)
-              gsub(/\/.*", "", line)
+              gsub(/\/.*/, "", line)
               gsub(/\^.*/, "", line)
               if (line != "" && line !~ /^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$/ && line !~ /^(http|https):/)
                 print "DOMAIN-SUFFIX," line
               next
             }
             # 裸域名/关键词
-            gsub(/\/.*", "", line)
+            gsub(/\/.*/, "", line)
             gsub(/\^.*/, "", line)
             if (line != "" && line !~ /^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$/ && line !~ /^(http|https):/) {
               if (line ~ /\./)
@@ -504,7 +504,7 @@ jobs:
             # @@||domain — DOMAIN-SUFFIX
             if (line ~ /^@@\|\|/) {
               gsub(/^@@\|\|/, "", line)
-              gsub(/\/.*", "", line)
+              gsub(/\/.*/, "", line)
               gsub(/\^.*/, "", line)
               if (line != "" && line !~ /^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$/ && line !~ /^(http|https):/)
                 print "DOMAIN-SUFFIX," line
@@ -513,7 +513,7 @@ jobs:
             # @@|http://domain — DOMAIN
             if (line ~ /^@@\|https?:\/\//) {
               gsub(/^@@\|https?:\/\//, "", line)
-              gsub(/\/.*", "", line)
+              gsub(/\/.*/, "", line)
               gsub(/\^.*/, "", line)
               if (line != "" && line !~ /^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$/ && line !~ /^(http|https):/)
                 print "DOMAIN," line
@@ -522,7 +522,7 @@ jobs:
             # @@.domain — DOMAIN-SUFFIX
             if (line ~ /^@@\./) {
               gsub(/^@@\./, "", line)
-              gsub(/\/.*", "", line)
+              gsub(/\/.*/, "", line)
               gsub(/\^.*/, "", line)
               if (line != "" && line !~ /^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$/ && line !~ /^(http|https):/)
                 print "DOMAIN-SUFFIX," line
@@ -530,7 +530,7 @@ jobs:
             }
             # @@domain — 裸域名
             gsub(/^@@/, "", line)
-            gsub(/\/.*", "", line)
+            gsub(/\/.*/, "", line)
             gsub(/\^.*/, "", line)
             if (line != "" && line !~ /^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$/ && line !~ /^(http|https):/) {
               if (line ~ /\./)
