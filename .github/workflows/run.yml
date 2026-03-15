@@ -434,6 +434,7 @@ jobs:
               if (line ~ /^\|\|/) {
                 gsub(/^\|\|/, "", line)
                 gsub(/\^\$important$/, "", line)
+                gsub(/\^$/, "", line)
                 if (line != "") print "DOMAIN-SUFFIX," line
               } else {
                 gsub(/^\|+/, "", line)
