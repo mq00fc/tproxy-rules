@@ -68,45 +68,125 @@ jobs:
           set -eo pipefail
           
           temp_gfwlist=$(mktemp)
-          temp_list=$(mktemp)
-          temp_lw=$(mktemp)
+          temp_decoded=$(mktemp)
           target_file="proxy-list.txt"
           target_lw="direct-gfw.txt"
           
           # 下载 GFWList
           if ! wget --no-proxy -q -O "$temp_gfwlist" "https://raw.githubusercontent.com/gfwlist/gfwlist/master/gfwlist.txt"; then
               echo "下载失败" >&2
-              rm -f "$temp_gfwlist" "$temp_list" "$temp_lw"
+              rm -f "$temp_gfwlist" "$temp_decoded"
               exit 1
           fi
           
-          # 提取数据
-          base64 -d < "$temp_gfwlist" | tee >(
-              grep '^@@' | grep -v '^@@/' | \
-              sed -nE 's/^@@\|*\|*\*?(https?:\/\/)?([^\/^*]+).*/\2/p' | \
-              grep -Ev '^\s*$' | \
-              grep -Ev '^([0-9]{1,3}\.){3}[0-9]{1,3}$' | \
-              grep -Ev '^(http|https):' | \
-              sort -u > "$temp_lw"
-          ) | \
-          grep -vE '^!|^\[|^@@|^$|^/' | \
-          sed -nE 's/^\|*\|*\*?(https?:\/\/)?([^\/^*]+).*/\2/p' | \
-          grep -Ev '^\s*$' | \
-          grep -Ev '^([0-9]{1,3}\.){3}[0-9]{1,3}$' | \
-          grep -Ev '^(http|https):' | \
-          sort -u > "$temp_list"
+          # 解码
+          base64 -d < "$temp_gfwlist" > "$temp_decoded"
+          
+          # ========== 生成 proxy-list.txt ==========
+          # 过滤掉注释、AutoProxy头、白名单、空行、正则规则
+          grep -vE '^!|^\[|^@@|^$' "$temp_decoded" | \
+          awk '
+          # 跳过正则规则 /regex/
+          /^\/.*\/$/ { next }
+          # 跳过含通配符 * 的规则（无法精确转为域名）
+          /\*/ { next }
+          {
+            line = $0
+            # ||domain^ 或 ||domain — 域名后缀匹配
+            if (line ~ /^\|\|/) {
+              gsub(/^\|\|/, "", line)
+              gsub(/\/.*", "", line)
+              gsub(/\^.*/, "", line)
+              if (line != "" && line !~ /^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$/ && line !~ /^(http|https):/)
+                print "domain:" line
+              next
+            }
+            # |http://domain 或 |https://domain — URL前缀精确匹配
+            if (line ~ /^\|https?:\/\//) {
+              gsub(/^\|https?:\/\//, "", line)
+              gsub(/\/.*", "", line)
+              gsub(/\^.*/, "", line)
+              if (line != "" && line !~ /^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$/ && line !~ /^(http|https):/)
+                print "full:" line
+              next
+            }
+            # .domain.com — 以点开头，等同于后缀匹配
+            if (line ~ /^\./) {
+              gsub(/^\./, "", line)
+              gsub(/\/.*", "", line)
+              gsub(/\^.*/, "", line)
+              if (line != "" && line !~ /^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$/ && line !~ /^(http|https):/)
+                print "domain:" line
+              next
+            }
+            # 裸域名/关键词 — 判断是否像完整域名
+            gsub(/\/.*", "", line)
+            gsub(/\^.*/, "", line)
+            if (line != "" && line !~ /^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$/ && line !~ /^(http|https):/) {
+              # 包含点号的视为完整域名 → full精确匹配
+              if (line ~ /\./)
+                print "full:" line
+              else
+                # 不含点号的纯关键词
+                print "keyword:" line
+            }
+          }
+          ' | sort -u > "$target_file"
+          
+          # ========== 生成 direct-gfw.txt（白名单）==========
+          grep '^@@' "$temp_decoded" | grep -v '^@@/' | \
+          awk '
+          /\*/ { next }
+          {
+            line = $0
+            # @@||domain — 白名单后缀匹配
+            if (line ~ /^@@\|\|/) {
+              gsub(/^@@\|\|/, "", line)
+              gsub(/\/.*", "", line)
+              gsub(/\^.*/, "", line)
+              if (line != "" && line !~ /^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$/ && line !~ /^(http|https):/)
+                print "domain:" line
+              next
+            }
+            # @@|http://domain — 白名单精确匹配
+            if (line ~ /^@@\|https?:\/\//) {
+              gsub(/^@@\|https?:\/\//, "", line)
+              gsub(/\/.*", "", line)
+              gsub(/\^.*/, "", line)
+              if (line != "" && line !~ /^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$/ && line !~ /^(http|https):/)
+                print "full:" line
+              next
+            }
+            # @@.domain — 白名单后缀匹配
+            if (line ~ /^@@\./) {
+              gsub(/^@@\./, "", line)
+              gsub(/\/.*", "", line)
+              gsub(/\^.*/, "", line)
+              if (line != "" && line !~ /^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$/ && line !~ /^(http|https):/)
+                print "domain:" line
+              next
+            }
+            # @@domain — 白名单裸域名
+            gsub(/^@@/, "", line)
+            gsub(/\/.*", "", line)
+            gsub(/\^.*/, "", line)
+            if (line != "" && line !~ /^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$/ && line !~ /^(http|https):/) {
+              if (line ~ /\./)
+                print "full:" line
+              else
+                print "keyword:" line
+            }
+          }
+          ' | sort -u > "$target_lw"
           
           # 检查输出有效
-          if [ ! -s "$temp_list" ]; then
+          if [ ! -s "$target_file" ]; then
               echo "proxy-list.txt 为空，终止提交" >&2
-              rm -f "$temp_gfwlist" "$temp_list" "$temp_lw"
+              rm -f "$temp_gfwlist" "$temp_decoded"
               exit 1
           fi
           
-          mv -f "$temp_list" "$target_file"
-          mv -f "$temp_lw" "$target_lw"
-          
-          rm -f "$temp_gfwlist"
+          rm -f "$temp_gfwlist" "$temp_decoded"
 
       - name: 提交变更
         run: |
@@ -215,50 +295,74 @@ jobs:
           {
             echo "#!/bin/sh"
             echo "# Private"
-            echo "nft add element inet proxy private_ips  { $(paste -sd, "$TMP_PRIVATE4") }"
-            echo "nft add element inet proxy private_ips6 { $(paste -sd, "$TMP_PRIVATE6") }"
+            echo "nft add element inet proxy private_ips  { \
+            $(paste -sd, "$TMP_PRIVATE4") }"
+            echo "nft add element inet proxy private_ips6 { \
+            $(paste -sd, "$TMP_PRIVATE6") }"
             echo "# Telegram"
-            echo "nft add element inet proxy ips { $(paste -sd, "$TMP_TG4") }"
-            echo "nft add element inet proxy ips6 { $(paste -sd, "$TMP_TG6") }"
+            echo "nft add element inet proxy ips { \
+            $(paste -sd, "$TMP_TG4") }"
+            echo "nft add element inet proxy ips6 { \
+            $(paste -sd, "$TMP_TG6") }"
             echo "# Cloudflare"
-            echo "nft add element inet proxy ips { $(paste -sd, "$TMP_CF4") }"
-            echo "nft add element inet proxy ips6 { $(paste -sd, "$TMP_CF6") }"
+            echo "nft add element inet proxy ips { \
+            $(paste -sd, "$TMP_CF4") }"
+            echo "nft add element inet proxy ips6 { \
+            $(paste -sd, "$TMP_CF6") }"
             echo "# GitHub"
-            echo "nft add element inet proxy ips { $(paste -sd, "$TMP_GIT4") }"
-            echo "nft add element inet proxy ips6 { $(paste -sd, "$TMP_GIT6") }"
+            echo "nft add element inet proxy ips { \
+            $(paste -sd, "$TMP_GIT4") }"
+            echo "nft add element inet proxy ips6 { \
+            $(paste -sd, "$TMP_GIT6") }"
             echo "# Google"
-            echo "nft add element inet proxy ips { $(paste -sd, "$TMP_GOOGLE4") }"
-            echo "nft add element inet proxy ips6 { $(paste -sd, "$TMP_GOOGLE6") }"
+            echo "nft add element inet proxy ips { \
+            $(paste -sd, "$TMP_GOOGLE4") }"
+            echo "nft add element inet proxy ips6 { \
+            $(paste -sd, "$TMP_GOOGLE6") }"
             echo "# Facebook"
-            echo "nft add element inet proxy ips { $(paste -sd, "$TMP_FACEBOOK4") }"
-            echo "nft add element inet proxy ips6 { $(paste -sd, "$TMP_FACEBOOK6") }"
+            echo "nft add element inet proxy ips { \
+            $(paste -sd, "$TMP_FACEBOOK4") }"
+            echo "nft add element inet proxy ips6 { \
+            $(paste -sd, "$TMP_FACEBOOK6") }"
             echo "# CloudFront"
-            echo "nft add element inet proxy ips { $(paste -sd, "$TMP_CFJSON4") }"
-            echo "nft add element inet proxy ips6 { $(paste -sd, "$TMP_CFJSON6") }"
+            echo "nft add element inet proxy ips { \
+            $(paste -sd, "$TMP_CFJSON4") }"
+            echo "nft add element inet proxy ips6 { \
+            $(paste -sd, "$TMP_CFJSON6") }"
             echo "# Netflix"
-            echo "nft add element inet proxy ips { $(paste -sd, "$TMP_NETFLIX4") }"
-            echo "nft add element inet proxy ips6 { $(paste -sd, "$TMP_NETFLIX6") }"
+            echo "nft add element inet proxy ips { \
+            $(paste -sd, "$TMP_NETFLIX4") }"
+            echo "nft add element inet proxy ips6 { \
+            $(paste -sd, "$TMP_NETFLIX6") }"
           } > nft-base-ips6.sh
 
           # 仅v4
           {
             echo "#!/bin/sh"
             echo "# Private"
-            echo "nft add element inet proxy private_ips  { $(paste -sd, "$TMP_PRIVATE4") }"
+            echo "nft add element inet proxy private_ips  { \
+            $(paste -sd, "$TMP_PRIVATE4") }"
             echo "# Telegram"
-            echo "nft add element inet proxy ips { $(paste -sd, "$TMP_TG4") }"
+            echo "nft add element inet proxy ips { \
+            $(paste -sd, "$TMP_TG4") }"
             echo "# Cloudflare"
-            echo "nft add element inet proxy ips { $(paste -sd, "$TMP_CF4") }"
+            echo "nft add element inet proxy ips { \
+            $(paste -sd, "$TMP_CF4") }"
             echo "# GitHub"
-            echo "nft add element inet proxy ips { $(paste -sd, "$TMP_GIT4") }"
+            echo "nft add element inet proxy ips { \
+            $(paste -sd, "$TMP_GIT4") }"
             echo "# Google"
-            echo "nft add element inet proxy ips { $(paste -sd, "$TMP_GOOGLE4") }"
+            echo "nft add element inet proxy ips { \
+            $(paste -sd, "$TMP_GOOGLE4") }"
             echo "# Facebook"
-            echo "nft add element inet proxy ips { $(paste -sd, "$TMP_FACEBOOK4") }"
+            echo "nft add element inet proxy ips { \
+            $(paste -sd, "$TMP_FACEBOOK4") }"
             echo "# CloudFront"
-            echo "nft add element inet proxy ips { $(paste -sd, "$TMP_CFJSON4") }"
+            echo "nft add element inet proxy ips { \
+            $(paste -sd, "$TMP_CFJSON4") }"
             echo "# Netflix"
-            echo "nft add element inet proxy ips { $(paste -sd, "$TMP_NETFLIX4") }"
+            echo "nft add element inet proxy ips { \
+            $(paste -sd, "$TMP_NETFLIX4") }"
           } > nft-base-ips4.sh
 
           rm -f "$TMP_TG4" "$TMP_TG6" "$TMP_CF4" "$TMP_CF6" "$TMP_GIT_ALL" "$TMP_GIT4" "$TMP_GIT6" "$TMP_GOOGLE4" "$TMP_GOOGLE6" "$TMP_FACEBOOK4" "$TMP_FACEBOOK6" "$TMP_CFJSON4" "$TMP_CFJSON6" "$TMP_NETFLIX4" "$TMP_NETFLIX6" "$TMP_PRIVATE4" "$TMP_PRIVATE6"
@@ -329,7 +433,7 @@ jobs:
               line = $0
               if (line ~ /^\|\|/) {
                 gsub(/^\|\|/, "", line)
-                gsub(/\^(\$important)?$/, "", line)
+                gsub(/\^\$important$/, "", line)
                 if (line != "") print "DOMAIN-SUFFIX," line
               } else {
                 gsub(/^\|+/, "", line)
@@ -341,28 +445,103 @@ jobs:
         run: |
           set -eo pipefail
           temp_gfwlist=$(mktemp)
-          temp_proxy=$(mktemp)
-          temp_direct=$(mktemp)
+          temp_decoded=$(mktemp)
           wget --no-proxy -q -O "$temp_gfwlist" "https://raw.githubusercontent.com/gfwlist/gfwlist/master/gfwlist.txt"
-          base64 -d < "$temp_gfwlist" | tee >(
-            grep '^@@' | grep -v '^@@/' | \
-            sed -nE 's/^@@\|*\|*\*?(https?:\/\/)?([^\/^*]+).*/\2/p' | \
-            grep -Ev '^\s*$' | \
-            grep -Ev '^([0-9]{1,3}\.){3}[0-9]{1,3}$' | \
-            grep -Ev '^(http|https):' | \
-            sort -u | \
-            awk '{print "DOMAIN-SUFFIX," $0}' > "$temp_direct"
-          ) | \
-          grep -vE '^!|^\[|^@@|^$|^/' | \
-          sed -nE 's/^\|*\|*\*?(https?:\/\/)?([^\/^*]+).*/\2/p' | \
-          grep -Ev '^\s*$' | \
-          grep -Ev '^([0-9]{1,3}\.){3}[0-9]{1,3}$' | \
-          grep -Ev '^(http|https):' | \
-          sort -u | \
-          awk '{print "DOMAIN-SUFFIX," $0}' > "$temp_proxy"
-          mv -f "$temp_proxy" mihomo/proxy.list
-          mv -f "$temp_direct" mihomo/direct.list
-          rm -f "$temp_gfwlist"
+          base64 -d < "$temp_gfwlist" > "$temp_decoded"
+          
+          # ========== 生成 mihomo/proxy.list ==========
+          grep -vE '^!|^\[|^@@|^$' "$temp_decoded" | \
+          awk '
+          /^\/.*\/$/ { next }
+          /\*/ { next }
+          {
+            line = $0
+            # ||domain — DOMAIN-SUFFIX
+            if (line ~ /^\|\|/) {
+              gsub(/^\|\|/, "", line)
+              gsub(/\/.*", "", line)
+              gsub(/\^.*/, "", line)
+              if (line != "" && line !~ /^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$/ && line !~ /^(http|https):/)
+                print "DOMAIN-SUFFIX," line
+              next
+            }
+            # |http://domain — DOMAIN (精确匹配)
+            if (line ~ /^\|https?:\/\//) {
+              gsub(/^\|https?:\/\//, "", line)
+              gsub(/\/.*", "", line)
+              gsub(/\^.*/, "", line)
+              if (line != "" && line !~ /^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$/ && line !~ /^(http|https):/)
+                print "DOMAIN," line
+              next
+            }
+            # .domain — DOMAIN-SUFFIX
+            if (line ~ /^\./) {
+              gsub(/^\./, "", line)
+              gsub(/\/.*", "", line)
+              gsub(/\^.*/, "", line)
+              if (line != "" && line !~ /^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$/ && line !~ /^(http|https):/)
+                print "DOMAIN-SUFFIX," line
+              next
+            }
+            # 裸域名/关键词
+            gsub(/\/.*", "", line)
+            gsub(/\^.*/, "", line)
+            if (line != "" && line !~ /^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$/ && line !~ /^(http|https):/) {
+              if (line ~ /\./)
+                print "DOMAIN," line
+              else
+                print "DOMAIN-KEYWORD," line
+            }
+          }
+          ' | sort -u > mihomo/proxy.list
+          
+          # ========== 生成 mihomo/direct.list（白名单）==========
+          grep '^@@' "$temp_decoded" | grep -v '^@@/' | \
+          awk '
+          /\*/ { next }
+          {
+            line = $0
+            # @@||domain — DOMAIN-SUFFIX
+            if (line ~ /^@@\|\|/) {
+              gsub(/^@@\|\|/, "", line)
+              gsub(/\/.*", "", line)
+              gsub(/\^.*/, "", line)
+              if (line != "" && line !~ /^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$/ && line !~ /^(http|https):/)
+                print "DOMAIN-SUFFIX," line
+              next
+            }
+            # @@|http://domain — DOMAIN
+            if (line ~ /^@@\|https?:\/\//) {
+              gsub(/^@@\|https?:\/\//, "", line)
+              gsub(/\/.*", "", line)
+              gsub(/\^.*/, "", line)
+              if (line != "" && line !~ /^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$/ && line !~ /^(http|https):/)
+                print "DOMAIN," line
+              next
+            }
+            # @@.domain — DOMAIN-SUFFIX
+            if (line ~ /^@@\./) {
+              gsub(/^@@\./, "", line)
+              gsub(/\/.*", "", line)
+              gsub(/\^.*/, "", line)
+              if (line != "" && line !~ /^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$/ && line !~ /^(http|https):/)
+                print "DOMAIN-SUFFIX," line
+              next
+            }
+            # @@domain — 裸域名
+            gsub(/^@@/, "", line)
+            gsub(/\/.*", "", line)
+            gsub(/\^.*/, "", line)
+            if (line != "" && line !~ /^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$/ && line !~ /^(http|https):/) {
+              if (line ~ /\./)
+                print "DOMAIN," line
+              else
+                print "DOMAIN-KEYWORD," line
+            }
+          }
+          ' | sort -u > mihomo/direct.list
+          
+          rm -f "$temp_gfwlist" "$temp_decoded"
       - name: 生成 mihomo/proxy-plus.list
         run: |
           {
@@ -401,7 +580,6 @@ jobs:
           } | sort -u > mihomo/github-cidr.list
           
           rm -f "$TMP_GIT_ALL"
-      
       - name: 提交变更
         run: |
           git config --global user.name 'github-actions[bot]'
