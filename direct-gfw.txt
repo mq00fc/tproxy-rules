@@ -10,6 +10,7 @@ domain:connectivitycheck.gstatic.com
 domain:crl.pki.goog
 domain:csi.gstatic.com
 domain:dl.google.com
+domain:firebase-settings.crashlytics.com
 domain:fonts.googleapis.com
 domain:fonts.gstatic.com
 domain:g0.gstatic.com
