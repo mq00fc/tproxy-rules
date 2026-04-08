@@ -10,6 +10,7 @@ DOMAIN-SUFFIX,connectivitycheck.gstatic.com
 DOMAIN-SUFFIX,crl.pki.goog
 DOMAIN-SUFFIX,csi.gstatic.com
 DOMAIN-SUFFIX,dl.google.com
+DOMAIN-SUFFIX,firebase-settings.crashlytics.com
 DOMAIN-SUFFIX,fonts.googleapis.com
 DOMAIN-SUFFIX,fonts.gstatic.com
 DOMAIN-SUFFIX,g0.gstatic.com
