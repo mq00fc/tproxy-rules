@@ -187,196 +187,215 @@ jobs:
           git commit -m 'chore: sync gfwlist to proxy-list and direct-gfw' || echo "Nothing to commit"
           git push || echo "Nothing to push"
 
-  update-nft-base-ips:
+  update-nft-base-ips:  # 来自 nft-base-ips.yml
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v6
+      - name: 检出代码
+        uses: actions/checkout@v4
 
-      - name: Install curl jq
-        run: sudo apt-get update && sudo apt-get install -y curl jq coreutils
+      - name: 安装依赖
+        run: sudo apt-get update && sudo apt-get install -y curl jq 
 
-      - name: Generate nft-base-ips.sh
+      - name: 生成 nft-base-ips.sh
         run: |
-          # Helper: fetch with retry and validate non-empty output
-          fetch_url() {
-            local url="$1"
-            local out="$2"
-            local retry=3
-            while [ $retry -gt 0 ]; do
-              if curl $CURL_OPTS -A "$CURL_USER_AGENT" -H "$CURL_CACHE_BUST" -H "$CURL_PRAGMA" -fsSL -o "$out" "$url" && [ -s "$out" ]; then
-                return 0
-              fi
-              echo "Retry $retry for $url" >&2
-              retry=$((retry - 1))
-              sleep 2
-            done
-            return 1
-          }
+
+
+
+
+
+
+
+
 
           TMP_TG4=$(mktemp)
           TMP_TG6=$(mktemp)
-          TMP_CF=$(mktemp)
+          TMP_CF4=$(mktemp)
+          TMP_CF6=$(mktemp)
           TMP_GIT_ALL=$(mktemp)
           TMP_GIT4=$(mktemp)
           TMP_GIT6=$(mktemp)
-          TMP_GOOGLE=$(mktemp)
+
           TMP_GOOGLE4=$(mktemp)
           TMP_GOOGLE6=$(mktemp)
-          TMP_FACEBOOK=$(mktemp)
+
           TMP_FACEBOOK4=$(mktemp)
           TMP_FACEBOOK6=$(mktemp)
-          TMP_CFJSON=$(mktemp)
+
           TMP_CFJSON4=$(mktemp)
           TMP_CFJSON6=$(mktemp)
-          TMP_NETFLIX=$(mktemp)
+
           TMP_NETFLIX4=$(mktemp)
           TMP_NETFLIX6=$(mktemp)
-          TMP_PRIVATE=$(mktemp)
+
           TMP_PRIVATE4=$(mktemp)
           TMP_PRIVATE6=$(mktemp)
 
-          # Shared MetaCubeX JSON - fetch once, reuse for v4/v6
-          META_BASE="https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/refs/heads/sing/geo/geoip"
+          # Telegram
+          curl -fsSL "https://core.telegram.org/resources/cidr.txt" |
 
-          # Telegram (no JSON, direct text)
-          echo "Fetching Telegram CIDRs..."
-          curl $CURL_OPTS -A "$CURL_USER_AGENT" -H "$CURL_CACHE_BUST" -H "$CURL_PRAGMA" -s "https://core.telegram.org/resources/cidr.txt" | \
-            grep -Ev '^\s*#|^$' | \
-            grep -E '^([0-9]{1,3}\.){3}[0-9]{1,3}(\/[0-9]{1,2})?$' | \
-            sort -u > "$TMP_TG4" || true
-          curl $CURL_OPTS -A "$CURL_USER_AGENT" -H "$CURL_CACHE_BUST" -H "$CURL_PRAGMA" -s "https://core.telegram.org/resources/cidr.txt" | \
-            grep ':' | grep / | sort -u > "$TMP_TG6" || true
+
+
+
+            grep -Ev '^\s*#|^$' |
+            grep -E '^([0-9]{1,3}\.){3}[0-9]{1,3}(\/[0-9]{1,2})?$' |
+            sort -u > "$TMP_TG4"
+          curl -fsSL "https://core.telegram.org/resources/cidr.txt" |
+            grep ':' | grep / | sort -u > "$TMP_TG6"
 
           # Cloudflare
-          echo "Fetching Cloudflare..."
-          if fetch_url "$META_BASE/cloudflare.json" "$TMP_CF"; then
-            jq -r '(.rules[] | .ip_cidr[])' "$TMP_CF" 2>/dev/null | \
-              grep -E '^([0-9]{1,3}\.){3}[0-9]{1,3}(\/[0-9]{1,2})?$' | sort -u > "$TMP_CF4" || true
-            jq -r '(.rules[] | .ip_cidr[])' "$TMP_CF" 2>/dev/null | \
-              grep ':' | sort -u > "$TMP_CF6" || true
-          fi
+          curl -fsSL "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/refs/heads/sing/geo/geoip/cloudflare.json" |
+            jq -r '[.rules[].ip_cidr[]] | .[]' |
 
-          # GitHub (rate-limit aware)
-          echo "Fetching GitHub..."
-          if curl $CURL_OPTS -A "$CURL_USER_AGENT" -H "$CURL_CACHE_BUST" -H "$CURL_PRAGMA" -fsSL -o "$TMP_GIT_ALL" "https://api.github.com/meta" && [ -s "$TMP_GIT_ALL" ]; then
-            jq -r '.git[]' "$TMP_GIT_ALL" 2>/dev/null | sort -u > "$TMP_GIT_ALL.tmp" && mv "$TMP_GIT_ALL.tmp" "$TMP_GIT_ALL"
-            grep -E '^([0-9]{1,3}\.){3}[0-9]{1,3}(\/[0-9]{1,2})?$' "$TMP_GIT_ALL" > "$TMP_GIT4" || true
-            grep -E ':' "$TMP_GIT_ALL" > "$TMP_GIT6" || true
-          else
-            echo "GitHub API failed, using empty list" >&2
-            touch "$TMP_GIT_ALL" "$TMP_GIT4" "$TMP_GIT6"
-          fi
+            grep -E '^([0-9]{1,3}\.){3}[0-9]{1,3}(\/[0-9]{1,2})?$' |
+            sort -u > "$TMP_CF4"
+          curl -fsSL "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/refs/heads/sing/geo/geoip/cloudflare.json" |
+            jq -r '[.rules[].ip_cidr[]] | .[]' |
+            grep ':' | sort -u > "$TMP_CF6"
+
+          # GitHub
+          curl -fsSL "https://api.github.com/meta" | jq -r '.git[]' | sort -u > "$TMP_GIT_ALL"
+
+          grep -E '^([0-9]{1,3}\.){3}[0-9]{1,3}(\/[0-9]{1,2})?$' "$TMP_GIT_ALL" > "$TMP_GIT4"
+          grep -E ':' "$TMP_GIT_ALL" > "$TMP_GIT6"
 
           # Google
-          echo "Fetching Google..."
-          if fetch_url "$META_BASE/google.json" "$TMP_GOOGLE"; then
-            jq -r '(.rules[] | .ip_cidr[])' "$TMP_GOOGLE" 2>/dev/null | \
-              grep -E '^([0-9]{1,3}\.){3}[0-9]{1,3}(\/[0-9]{1,2})?$' | sort -u > "$TMP_GOOGLE4" || true
-            jq -r '(.rules[] | .ip_cidr[])' "$TMP_GOOGLE" 2>/dev/null | \
-              grep ':' | sort -u > "$TMP_GOOGLE6" || true
-          fi
+          curl -fsSL "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/refs/heads/sing/geo/geoip/google.json" |
+            jq -r '[.rules[].ip_cidr[]] | .[]' |
+
+            grep -E '^([0-9]{1,3}\.){3}[0-9]{1,3}(\/[0-9]{1,2})?$' |
+            sort -u > "$TMP_GOOGLE4"
+          curl -fsSL "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/refs/heads/sing/geo/geoip/google.json" |
+            jq -r '[.rules[].ip_cidr[]] | .[]' |
+            grep ':' | sort -u > "$TMP_GOOGLE6"
 
           # Facebook
-          echo "Fetching Facebook..."
-          if fetch_url "$META_BASE/facebook.json" "$TMP_FACEBOOK"; then
-            jq -r '(.rules[] | .ip_cidr[])' "$TMP_FACEBOOK" 2>/dev/null | \
-              grep -E '^([0-9]{1,3}\.){3}[0-9]{1,3}(\/[0-9]{1,2})?$' | sort -u > "$TMP_FACEBOOK4" || true
-            jq -r '(.rules[] | .ip_cidr[])' "$TMP_FACEBOOK" 2>/dev/null | \
-              grep ':' | sort -u > "$TMP_FACEBOOK6" || true
-          fi
+          curl -fsSL "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/refs/heads/sing/geo/geoip/facebook.json" |
+            jq -r '[.rules[].ip_cidr[]] | .[]' |
+
+            grep -E '^([0-9]{1,3}\.){3}[0-9]{1,3}(\/[0-9]{1,2})?$' |
+            sort -u > "$TMP_FACEBOOK4"
+          curl -fsSL "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/refs/heads/sing/geo/geoip/facebook.json" |
+            jq -r '[.rules[].ip_cidr[]] | .[]' |
+            grep ':' | sort -u > "$TMP_FACEBOOK6"
 
           # CloudFront
-          echo "Fetching CloudFront..."
-          if fetch_url "$META_BASE/cloudfront.json" "$TMP_CFJSON"; then
-            jq -r '(.rules[] | .ip_cidr[])' "$TMP_CFJSON" 2>/dev/null | \
-              grep -E '^([0-9]{1,3}\.){3}[0-9]{1,3}(\/[0-9]{1,2})?$' | sort -u > "$TMP_CFJSON4" || true
-            jq -r '(.rules[] | .ip_cidr[])' "$TMP_CFJSON" 2>/dev/null | \
-              grep ':' | sort -u > "$TMP_CFJSON6" || true
-          fi
+          curl -fsSL "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/refs/heads/sing/geo/geoip/cloudfront.json" |
+            jq -r '[.rules[].ip_cidr[]] | .[]' |
+
+            grep -E '^([0-9]{1,3}\.){3}[0-9]{1,3}(\/[0-9]{1,2})?$' |
+            sort -u > "$TMP_CFJSON4"
+          curl -fsSL "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/refs/heads/sing/geo/geoip/cloudfront.json" |
+            jq -r '[.rules[].ip_cidr[]] | .[]' |
+            grep ':' | sort -u > "$TMP_CFJSON6"
 
           # Netflix
-          echo "Fetching Netflix..."
-          if fetch_url "$META_BASE/netflix.json" "$TMP_NETFLIX"; then
-            jq -r '(.rules[] | .ip_cidr[])' "$TMP_NETFLIX" 2>/dev/null | \
-              grep -E '^([0-9]{1,3}\.){3}[0-9]{1,3}(\/[0-9]{1,2})?$' | sort -u > "$TMP_NETFLIX4" || true
-            jq -r '(.rules[] | .ip_cidr[])' "$TMP_NETFLIX" 2>/dev/null | \
-              grep ':' | sort -u > "$TMP_NETFLIX6" || true
-          fi
+          curl -fsSL "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/refs/heads/sing/geo/geoip/netflix.json" |
+            jq -r '[.rules[].ip_cidr[]] | .[]' |
+
+            grep -E '^([0-9]{1,3}\.){3}[0-9]{1,3}(\/[0-9]{1,2})?$' |
+            sort -u > "$TMP_NETFLIX4"
+          curl -fsSL "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/refs/heads/sing/geo/geoip/netflix.json" |
+            jq -r '[.rules[].ip_cidr[]] | .[]' |
+            grep ':' | sort -u > "$TMP_NETFLIX6"
 
           # Private
-          echo "Fetching Private..."
-          if fetch_url "$META_BASE/private.json" "$TMP_PRIVATE"; then
-            jq -r '(.rules[] | .ip_cidr[])' "$TMP_PRIVATE" 2>/dev/null | \
-              grep -E '^([0-9]{1,3}\.){3}[0-9]{1,3}(\/[0-9]{1,2})?$' | sort -u > "$TMP_PRIVATE4" || true
-            jq -r '(.rules[] | .ip_cidr[])' "$TMP_PRIVATE" 2>/dev/null | \
-              grep ':' | sort -u > "$TMP_PRIVATE6" || true
-          fi
+          curl -fsSL "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/refs/heads/sing/geo/geoip/private.json" |
+            jq -r '[.rules[].ip_cidr[]] | .[]' |
 
-          # v4 + v6 combined
+            grep -E '^([0-9]{1,3}\.){3}[0-9]{1,3}(\/[0-9]{1,2})?$' |
+            sort -u > "$TMP_PRIVATE4"
+          curl -fsSL "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/refs/heads/sing/geo/geoip/private.json" |
+            jq -r '[.rules[].ip_cidr[]] | .[]' |
+            grep ':' | sort -u > "$TMP_PRIVATE6"
+
+
           {
             echo "#!/bin/sh"
             echo "# Private"
-            echo "nft add element inet proxy private_ips  { $(paste -sd, "$TMP_PRIVATE4") }"
-            echo "nft add element inet proxy private_ips6 { $(paste -sd, "$TMP_PRIVATE6") }"
+            echo "nft add element inet proxy private_ips  { \
+            $(paste -sd, "$TMP_PRIVATE4") }"
+            echo "nft add element inet proxy private_ips6 { \
+            $(paste -sd, "$TMP_PRIVATE6") }"
             echo "# Telegram"
-            echo "nft add element inet proxy ips { $(paste -sd, "$TMP_TG4") }"
-            echo "nft add element inet proxy ips6 { $(paste -sd, "$TMP_TG6") }"
+            echo "nft add element inet proxy ips { \
+            $(paste -sd, "$TMP_TG4") }"
+            echo "nft add element inet proxy ips6 { \
+            $(paste -sd, "$TMP_TG6") }"
             echo "# Cloudflare"
-            echo "nft add element inet proxy ips { $(paste -sd, "$TMP_CF4") }"
-            echo "nft add element inet proxy ips6 { $(paste -sd, "$TMP_CF6") }"
+            echo "nft add element inet proxy ips { \
+            $(paste -sd, "$TMP_CF4") }"
+            echo "nft add element inet proxy ips6 { \
+            $(paste -sd, "$TMP_CF6") }"
             echo "# GitHub"
-            echo "nft add element inet proxy ips { $(paste -sd, "$TMP_GIT4") }"
-            echo "nft add element inet proxy ips6 { $(paste -sd, "$TMP_GIT6") }"
+            echo "nft add element inet proxy ips { \
+            $(paste -sd, "$TMP_GIT4") }"
+            echo "nft add element inet proxy ips6 { \
+            $(paste -sd, "$TMP_GIT6") }"
             echo "# Google"
-            echo "nft add element inet proxy ips { $(paste -sd, "$TMP_GOOGLE4") }"
-            echo "nft add element inet proxy ips6 { $(paste -sd, "$TMP_GOOGLE6") }"
+            echo "nft add element inet proxy ips { \
+            $(paste -sd, "$TMP_GOOGLE4") }"
+            echo "nft add element inet proxy ips6 { \
+            $(paste -sd, "$TMP_GOOGLE6") }"
             echo "# Facebook"
-            echo "nft add element inet proxy ips { $(paste -sd, "$TMP_FACEBOOK4") }"
-            echo "nft add element inet proxy ips6 { $(paste -sd, "$TMP_FACEBOOK6") }"
+            echo "nft add element inet proxy ips { \
+            $(paste -sd, "$TMP_FACEBOOK4") }"
+            echo "nft add element inet proxy ips6 { \
+            $(paste -sd, "$TMP_FACEBOOK6") }"
             echo "# CloudFront"
-            echo "nft add element inet proxy ips { $(paste -sd, "$TMP_CFJSON4") }"
-            echo "nft add element inet proxy ips6 { $(paste -sd, "$TMP_CFJSON6") }"
+            echo "nft add element inet proxy ips { \
+            $(paste -sd, "$TMP_CFJSON4") }"
+            echo "nft add element inet proxy ips6 { \
+            $(paste -sd, "$TMP_CFJSON6") }"
             echo "# Netflix"
-            echo "nft add element inet proxy ips { $(paste -sd, "$TMP_NETFLIX4") }"
-            echo "nft add element inet proxy ips6 { $(paste -sd, "$TMP_NETFLIX6") }"
+            echo "nft add element inet proxy ips { \
+            $(paste -sd, "$TMP_NETFLIX4") }"
+            echo "nft add element inet proxy ips6 { \
+            $(paste -sd, "$TMP_NETFLIX6") }"
           } > nft-base-ips6.sh
 
-          # v4 only
+          # 仅v4
           {
             echo "#!/bin/sh"
             echo "# Private"
-            echo "nft add element inet proxy private_ips  { $(paste -sd, "$TMP_PRIVATE4") }"
+            echo "nft add element inet proxy private_ips  { \
+            $(paste -sd, "$TMP_PRIVATE4") }"
             echo "# Telegram"
-            echo "nft add element inet proxy ips { $(paste -sd, "$TMP_TG4") }"
+            echo "nft add element inet proxy ips { \
+            $(paste -sd, "$TMP_TG4") }"
             echo "# Cloudflare"
-            echo "nft add element inet proxy ips { $(paste -sd, "$TMP_CF4") }"
+            echo "nft add element inet proxy ips { \
+            $(paste -sd, "$TMP_CF4") }"
             echo "# GitHub"
-            echo "nft add element inet proxy ips { $(paste -sd, "$TMP_GIT4") }"
+            echo "nft add element inet proxy ips { \
+            $(paste -sd, "$TMP_GIT4") }"
             echo "# Google"
-            echo "nft add element inet proxy ips { $(paste -sd, "$TMP_GOOGLE4") }"
+            echo "nft add element inet proxy ips { \
+            $(paste -sd, "$TMP_GOOGLE4") }"
             echo "# Facebook"
-            echo "nft add element inet proxy ips { $(paste -sd, "$TMP_FACEBOOK4") }"
+            echo "nft add element inet proxy ips { \
+            $(paste -sd, "$TMP_FACEBOOK4") }"
             echo "# CloudFront"
-            echo "nft add element inet proxy ips { $(paste -sd, "$TMP_CFJSON4") }"
+            echo "nft add element inet proxy ips { \
+            $(paste -sd, "$TMP_CFJSON4") }"
             echo "# Netflix"
-            echo "nft add element inet proxy ips { $(paste -sd, "$TMP_NETFLIX4") }"
+            echo "nft add element inet proxy ips { \
+            $(paste -sd, "$TMP_NETFLIX4") }"
           } > nft-base-ips4.sh
 
-          rm -f "$TMP_TG4" "$TMP_TG6" "$TMP_CF" "$TMP_CF4" "$TMP_CF6" \
-                "$TMP_GIT_ALL" "$TMP_GIT4" "$TMP_GIT6" \
-                "$TMP_GOOGLE" "$TMP_GOOGLE4" "$TMP_GOOGLE6" \
-                "$TMP_FACEBOOK" "$TMP_FACEBOOK4" "$TMP_FACEBOOK6" \
-                "$TMP_CFJSON" "$TMP_CFJSON4" "$TMP_CFJSON6" \
-                "$TMP_NETFLIX" "$TMP_NETFLIX4" "$TMP_NETFLIX6" \
-                "$TMP_PRIVATE" "$TMP_PRIVATE4" "$TMP_PRIVATE6"
+          rm -f "$TMP_TG4" "$TMP_TG6" "$TMP_CF4" "$TMP_CF6" "$TMP_GIT_ALL" "$TMP_GIT4" "$TMP_GIT6" "$TMP_GOOGLE4" "$TMP_GOOGLE6" "$TMP_FACEBOOK4" "$TMP_FACEBOOK6" "$TMP_CFJSON4" "$TMP_CFJSON6" "$TMP_NETFLIX4" "$TMP_NETFLIX6" "$TMP_PRIVATE4" "$TMP_PRIVATE6"
+          
+      - name: 提交变更
 
-      - name: Commit & push
+
+
+
+
+
         run: |
           git config --global user.name 'github-actions[bot]'
           git config --global user.email 'github-actions[bot]@users.noreply.github.com'
           git add nft-base-ips4.sh nft-base-ips6.sh
-          git commit -m 'chore: sync latest CIDR data for nft' || echo "Nothing to commit"
+          git commit -m 'chore: 自动同步最新cidr nft' || echo "Nothing to commit"
           git push || echo "Nothing to push"
 
   generate-proxy-plus:
