@@ -72,8 +72,8 @@ jobs:
         run: |
           set -eo pipefail
 
-          temp_gfwlist=$(mktemp)
-          temp_decoded=$(mktemp)
+          temp_gfwlist=$(echo "tmp_$$_${RANDOM}${RANDOM}")
+          temp_decoded=$(echo "tmp_$$_${RANDOM}${RANDOM}")
           target_file="proxy-list.txt"
           target_lw="direct-gfw.txt"
 
@@ -214,27 +214,27 @@ jobs:
             return 1
           }
 
-          TMP_TG4=$(mktemp)
-          TMP_TG6=$(mktemp)
-          TMP_CF=$(mktemp)
-          TMP_GIT_ALL=$(mktemp)
-          TMP_GIT4=$(mktemp)
-          TMP_GIT6=$(mktemp)
-          TMP_GOOGLE=$(mktemp)
-          TMP_GOOGLE4=$(mktemp)
-          TMP_GOOGLE6=$(mktemp)
-          TMP_FACEBOOK=$(mktemp)
-          TMP_FACEBOOK4=$(mktemp)
-          TMP_FACEBOOK6=$(mktemp)
-          TMP_CFJSON=$(mktemp)
-          TMP_CFJSON4=$(mktemp)
-          TMP_CFJSON6=$(mktemp)
-          TMP_NETFLIX=$(mktemp)
-          TMP_NETFLIX4=$(mktemp)
-          TMP_NETFLIX6=$(mktemp)
-          TMP_PRIVATE=$(mktemp)
-          TMP_PRIVATE4=$(mktemp)
-          TMP_PRIVATE6=$(mktemp)
+          TMP_TG4=$(echo "tmp_$$_${RANDOM}${RANDOM}")
+          TMP_TG6=$(echo "tmp_$$_${RANDOM}${RANDOM}")
+          TMP_CF=$(echo "tmp_$$_${RANDOM}${RANDOM}")
+          TMP_GIT_ALL=$(echo "tmp_$$_${RANDOM}${RANDOM}")
+          TMP_GIT4=$(echo "tmp_$$_${RANDOM}${RANDOM}")
+          TMP_GIT6=$(echo "tmp_$$_${RANDOM}${RANDOM}")
+          TMP_GOOGLE=$(echo "tmp_$$_${RANDOM}${RANDOM}")
+          TMP_GOOGLE4=$(echo "tmp_$$_${RANDOM}${RANDOM}")
+          TMP_GOOGLE6=$(echo "tmp_$$_${RANDOM}${RANDOM}")
+          TMP_FACEBOOK=$(echo "tmp_$$_${RANDOM}${RANDOM}")
+          TMP_FACEBOOK4=$(echo "tmp_$$_${RANDOM}${RANDOM}")
+          TMP_FACEBOOK6=$(echo "tmp_$$_${RANDOM}${RANDOM}")
+          TMP_CFJSON=$(echo "tmp_$$_${RANDOM}${RANDOM}")
+          TMP_CFJSON4=$(echo "tmp_$$_${RANDOM}${RANDOM}")
+          TMP_CFJSON6=$(echo "tmp_$$_${RANDOM}${RANDOM}")
+          TMP_NETFLIX=$(echo "tmp_$$_${RANDOM}${RANDOM}")
+          TMP_NETFLIX4=$(echo "tmp_$$_${RANDOM}${RANDOM}")
+          TMP_NETFLIX6=$(echo "tmp_$$_${RANDOM}${RANDOM}")
+          TMP_PRIVATE=$(echo "tmp_$$_${RANDOM}${RANDOM}")
+          TMP_PRIVATE4=$(echo "tmp_$$_${RANDOM}${RANDOM}")
+          TMP_PRIVATE6=$(echo "tmp_$$_${RANDOM}${RANDOM}")
 
           # Shared MetaCubeX JSON - fetch once, reuse for v4/v6
           META_BASE="https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/refs/heads/sing/geo/geoip"
@@ -251,9 +251,9 @@ jobs:
           # Cloudflare
           echo "Fetching Cloudflare..."
           if fetch_url "$META_BASE/cloudflare.json" "$TMP_CF"; then
-            jq -r '[.rules[].ip_cidr[]] | .[]' "$TMP_CF" 2>/dev/null | \
+            jq -r '(.rules[] | .ip_cidr[])' "$TMP_CF" 2>/dev/null | \
               grep -E '^([0-9]{1,3}\.){3}[0-9]{1,3}(\/[0-9]{1,2})?$' | sort -u > "$TMP_CF4" || true
-            jq -r '[.rules[].ip_cidr[]] | .[]' "$TMP_CF" 2>/dev/null | \
+            jq -r '(.rules[] | .ip_cidr[])' "$TMP_CF" 2>/dev/null | \
               grep ':' | sort -u > "$TMP_CF6" || true
           fi
 
@@ -271,45 +271,45 @@ jobs:
           # Google
           echo "Fetching Google..."
           if fetch_url "$META_BASE/google.json" "$TMP_GOOGLE"; then
-            jq -r '[.rules[].ip_cidr[]] | .[]' "$TMP_GOOGLE" 2>/dev/null | \
+            jq -r '(.rules[] | .ip_cidr[])' "$TMP_GOOGLE" 2>/dev/null | \
               grep -E '^([0-9]{1,3}\.){3}[0-9]{1,3}(\/[0-9]{1,2})?$' | sort -u > "$TMP_GOOGLE4" || true
-            jq -r '[.rules[].ip_cidr[]] | .[]' "$TMP_GOOGLE" 2>/dev/null | \
+            jq -r '(.rules[] | .ip_cidr[])' "$TMP_GOOGLE" 2>/dev/null | \
               grep ':' | sort -u > "$TMP_GOOGLE6" || true
           fi
 
           # Facebook
           echo "Fetching Facebook..."
           if fetch_url "$META_BASE/facebook.json" "$TMP_FACEBOOK"; then
-            jq -r '[.rules[].ip_cidr[]] | .[]' "$TMP_FACEBOOK" 2>/dev/null | \
+            jq -r '(.rules[] | .ip_cidr[])' "$TMP_FACEBOOK" 2>/dev/null | \
               grep -E '^([0-9]{1,3}\.){3}[0-9]{1,3}(\/[0-9]{1,2})?$' | sort -u > "$TMP_FACEBOOK4" || true
-            jq -r '[.rules[].ip_cidr[]] | .[]' "$TMP_FACEBOOK" 2>/dev/null | \
+            jq -r '(.rules[] | .ip_cidr[])' "$TMP_FACEBOOK" 2>/dev/null | \
               grep ':' | sort -u > "$TMP_FACEBOOK6" || true
           fi
 
           # CloudFront
           echo "Fetching CloudFront..."
           if fetch_url "$META_BASE/cloudfront.json" "$TMP_CFJSON"; then
-            jq -r '[.rules[].ip_cidr[]] | .[]' "$TMP_CFJSON" 2>/dev/null | \
+            jq -r '(.rules[] | .ip_cidr[])' "$TMP_CFJSON" 2>/dev/null | \
               grep -E '^([0-9]{1,3}\.){3}[0-9]{1,3}(\/[0-9]{1,2})?$' | sort -u > "$TMP_CFJSON4" || true
-            jq -r '[.rules[].ip_cidr[]] | .[]' "$TMP_CFJSON" 2>/dev/null | \
+            jq -r '(.rules[] | .ip_cidr[])' "$TMP_CFJSON" 2>/dev/null | \
               grep ':' | sort -u > "$TMP_CFJSON6" || true
           fi
 
           # Netflix
           echo "Fetching Netflix..."
           if fetch_url "$META_BASE/netflix.json" "$TMP_NETFLIX"; then
-            jq -r '[.rules[].ip_cidr[]] | .[]' "$TMP_NETFLIX" 2>/dev/null | \
+            jq -r '(.rules[] | .ip_cidr[])' "$TMP_NETFLIX" 2>/dev/null | \
               grep -E '^([0-9]{1,3}\.){3}[0-9]{1,3}(\/[0-9]{1,2})?$' | sort -u > "$TMP_NETFLIX4" || true
-            jq -r '[.rules[].ip_cidr[]] | .[]' "$TMP_NETFLIX" 2>/dev/null | \
+            jq -r '(.rules[] | .ip_cidr[])' "$TMP_NETFLIX" 2>/dev/null | \
               grep ':' | sort -u > "$TMP_NETFLIX6" || true
           fi
 
           # Private
           echo "Fetching Private..."
           if fetch_url "$META_BASE/private.json" "$TMP_PRIVATE"; then
-            jq -r '[.rules[].ip_cidr[]] | .[]' "$TMP_PRIVATE" 2>/dev/null | \
+            jq -r '(.rules[] | .ip_cidr[])' "$TMP_PRIVATE" 2>/dev/null | \
               grep -E '^([0-9]{1,3}\.){3}[0-9]{1,3}(\/[0-9]{1,2})?$' | sort -u > "$TMP_PRIVATE4" || true
-            jq -r '[.rules[].ip_cidr[]] | .[]' "$TMP_PRIVATE" 2>/dev/null | \
+            jq -r '(.rules[] | .ip_cidr[])' "$TMP_PRIVATE" 2>/dev/null | \
               grep ':' | sort -u > "$TMP_PRIVATE6" || true
           fi
 
@@ -408,7 +408,7 @@ jobs:
             "https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Clash/Bahamut/Bahamut.list"
             "https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Clash/Python/Python.list"
           )
-          tmp=$(mktemp)
+          tmp=$(echo "tmp_$$_${RANDOM}${RANDOM}")
           for url in "${urls[@]}"; do
             echo "Fetching $url"
             curl $CURL_OPTS -A "$CURL_USER_AGENT" -H "$CURL_CACHE_BUST" -H "$CURL_PRAGMA" -s "$url" | grep -E '^DOMAIN,|^DOMAIN-SUFFIX,' | sed 's/^DOMAIN,/full:/; s/^DOMAIN-SUFFIX,/domain:/' >> "$tmp" || echo "warning: fetch failed $url" >&2
@@ -464,8 +464,8 @@ jobs:
       - name: Generate mihomo/proxy.list and mihomo/direct.list
         run: |
           set -eo pipefail
-          temp_gfwlist=$(mktemp)
-          temp_decoded=$(mktemp)
+          temp_gfwlist=$(echo "tmp_$$_${RANDOM}${RANDOM}")
+          temp_decoded=$(echo "tmp_$$_${RANDOM}${RANDOM}")
 
           echo "Fetching gfwlist..."
           curl $CURL_OPTS -A "$CURL_USER_AGENT" -H "$CURL_CACHE_BUST" -H "$CURL_PRAGMA" -o "$temp_gfwlist" "https://raw.githubusercontent.com/gfwlist/gfwlist/master/gfwlist.txt"
@@ -577,7 +577,7 @@ jobs:
             "https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Clash/Bahamut/Bahamut.list"
             "https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Clash/Python/Python.list"
           )
-          tmp=$(mktemp)
+          tmp=$(echo "tmp_$$_${RANDOM}${RANDOM}")
           for url in "${urls[@]}"; do
             echo "Fetching $url"
             curl $CURL_OPTS -A "$CURL_USER_AGENT" -H "$CURL_CACHE_BUST" -H "$CURL_PRAGMA" -s "$url" | grep -E '^DOMAIN,|^DOMAIN-SUFFIX,' >> "$tmp" || echo "warning: fetch failed $url" >&2
@@ -589,7 +589,7 @@ jobs:
       - name: Generate mihomo/github-cidr.list
         run: |
           set -eo pipefail
-          TMP_GIT_ALL=$(mktemp)
+          TMP_GIT_ALL=$(echo "tmp_$$_${RANDOM}${RANDOM}")
 
           echo "Fetching GitHub meta..."
           curl $CURL_OPTS -A "$CURL_USER_AGENT" -H "$CURL_CACHE_BUST" -H "$CURL_PRAGMA" -s "https://api.github.com/meta" | jq -r '(.git[], .copilot[])' | sort -u > "$TMP_GIT_ALL"
