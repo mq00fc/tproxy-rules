@@ -3,34 +3,33 @@ name: Run All
 on:
   workflow_dispatch:
   schedule:
-    - cron: "0 23,8 * * *"
+    - cron: "0 * * * *" 
 
 env:
-  CURL_OPTS: "-fsSL --retry 3 --retry-delay 5 --connect-timeout 10 --max-time 30"
-  CURL_CACHE_BUST: "Cache-Control: no-cache"
-  CURL_PRAGMA: "Pragma: no-cache"
+  DEFAULT_CURL_ARGS: "-fsSL --retry 3 --retry-delay 5 --connect-timeout 10 --max-time 30 -A 'tproxy-rules/automation (+https://github.com/mq00fc/tproxy-rules)'"
   SLEEP_BETWEEN_REQUESTS: "1"
 
 jobs:
-  update-adblock-plus:
+  update-adblock-plus:  # 来自 adblock-plus.yml
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
+      - name: 检出代码
         uses: actions/checkout@v6
 
-      - name: Install curl
+      - name: 安装 curl
         run: sudo apt-get update && sudo apt-get install -y curl
 
-      - name: Download and process AdGuard rules
+      - name: 下载和处理 AdGuard 规则为 adblock-plus.txt
         run: |
           set -eo pipefail
+          # AdGuard规则的URL列表
           ADGUARD_RULES_URLS=(
               "https://raw.githubusercontent.com/TG-Twilight/AWAvenue-Ads-Rule/main/AWAvenue-Ads-Rule.txt"
           )
           all_rules=""
           process_rule_file() {
             local url="$1"
-            all_rules+=$(curl $CURL_OPTS -H "$CURL_CACHE_BUST" -H "$CURL_PRAGMA" -s "$url" |
+            all_rules+=$(curl -s "$url" |
               grep -Ev '^[@#!;[]' |
               grep -Ev '^\s*$'     |
               grep -Ev '\*'        |
@@ -39,60 +38,65 @@ jobs:
           }
 
           for url in "${ADGUARD_RULES_URLS[@]}"; do
-            echo "Fetching $url"
             process_rule_file "$url"
           done
 
+          # 检查是否生成内容
           if [ -z "$all_rules" ]; then
-            echo "No valid rules generated"
+            echo "没有有效规则被生成，请检查输入规则内容。"
             exit 1
           fi
 
+          # 去重并保存
           echo "$all_rules" | sort -u > adblock-plus.txt
 
-      - name: Commit & push
+      - name: 提交变更
         run: |
           git config --global user.name 'github-actions[bot]'
           git config --global user.email 'github-actions[bot]@users.noreply.github.com'
           git add adblock-plus.txt
-          git commit -m 'chore: sync Adblock Plus rules' || echo "Nothing to commit"
+          git commit -m 'chore: 同步最新 Adblock Plus 规则' || echo "Nothing to commit"
           git push || echo "Nothing to push"
 
-  update-gfwlist:
+  update-gfwlist:  # 来自 gfwlist.yml
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
+      - name: 检出代码
         uses: actions/checkout@v6
 
-      - name: Install curl
-        run: sudo apt-get update && sudo apt-get install -y curl
+      - name: 安装依赖
+        run: sudo apt-get update && sudo apt-get install -y wget
 
-      - name: Generate proxy-list.txt and direct-gfw.txt
+      - name: 生成 proxy-list.txt 和 direct-gfw.txt
         run: |
           set -eo pipefail
-
-          temp_gfwlist="/tmp/gfwlist_$$"
-          temp_decoded="/tmp/decoded_$$"
+          
+          temp_gfwlist=$(mktemp)
+          temp_decoded=$(mktemp)
           target_file="proxy-list.txt"
           target_lw="direct-gfw.txt"
-
-          # Download GFWList with cache-busting headers
-          echo "Fetching gfwlist..."
-          if ! curl $CURL_OPTS -H "$CURL_CACHE_BUST" -H "$CURL_PRAGMA" -o "$temp_gfwlist" "https://raw.githubusercontent.com/gfwlist/gfwlist/master/gfwlist.txt"; then
-              echo "Download failed" >&2
+          
+          # 下载 GFWList
+          if ! wget --no-proxy -q -O "$temp_gfwlist" "https://raw.githubusercontent.com/gfwlist/gfwlist/master/gfwlist.txt"; then
+              echo "下载失败" >&2
               rm -f "$temp_gfwlist" "$temp_decoded"
               exit 1
           fi
-
+          
+          # 解码
           base64 -d < "$temp_gfwlist" > "$temp_decoded"
-
-          # ========== proxy-list.txt ==========
+          
+          # ========== 生成 proxy-list.txt ==========
+          # 过滤掉注释、AutoProxy头、白名单、空行、正则规则
           grep -vE '^!|^\[|^@@|^$' "$temp_decoded" | \
           awk '
+          # 跳过正则规则 /regex/
           /^\/.*\/$/ { next }
+          # 跳过含通配符 * 的规则（无法精确转为域名）
           /\*/ { next }
           {
             line = $0
+            # ||domain^ 或 ||domain — 域名后缀匹配
             if (line ~ /^\|\|/) {
               gsub(/^\|\|/, "", line)
               gsub(/\/.*/, "", line)
@@ -101,6 +105,7 @@ jobs:
                 print "domain:" line
               next
             }
+            # |http://domain 或 |https://domain — URL前缀精确匹配
             if (line ~ /^\|https?:\/\//) {
               gsub(/^\|https?:\/\//, "", line)
               gsub(/\/.*/, "", line)
@@ -109,6 +114,7 @@ jobs:
                 print "full:" line
               next
             }
+            # .domain.com — 以点开头，等同于后缀匹配
             if (line ~ /^\./) {
               gsub(/^\./, "", line)
               gsub(/\/.*/, "", line)
@@ -117,23 +123,27 @@ jobs:
                 print "domain:" line
               next
             }
+            # 裸域名/关键词 — 判断是否像完整域名
             gsub(/\/.*/, "", line)
             gsub(/\^.*/, "", line)
             if (line != "" && line !~ /^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$/ && line !~ /^(http|https):/) {
+              # 包含点号的视为完整域名 → full精确匹配
               if (line ~ /\./)
                 print "full:" line
               else
+                # 不含点号的纯关键词
                 print "keyword:" line
             }
           }
           ' | sort -u > "$target_file"
-
-          # ========== direct-gfw.txt (whitelist) ==========
+          
+          # ========== 生成 direct-gfw.txt（白名单）==========
           grep '^@@' "$temp_decoded" | grep -v '^@@/' | \
           awk '
           /\*/ { next }
           {
             line = $0
+            # @@||domain — 白名单后缀匹配
             if (line ~ /^@@\|\|/) {
               gsub(/^@@\|\|/, "", line)
               gsub(/\/.*/, "", line)
@@ -142,6 +152,7 @@ jobs:
                 print "domain:" line
               next
             }
+            # @@|http://domain — 白名单精确匹配
             if (line ~ /^@@\|https?:\/\//) {
               gsub(/^@@\|https?:\/\//, "", line)
               gsub(/\/.*/, "", line)
@@ -150,6 +161,7 @@ jobs:
                 print "full:" line
               next
             }
+            # @@.domain — 白名单后缀匹配
             if (line ~ /^@@\./) {
               gsub(/^@@\./, "", line)
               gsub(/\/.*/, "", line)
@@ -158,6 +170,7 @@ jobs:
                 print "domain:" line
               next
             }
+            # @@domain — 白名单裸域名
             gsub(/^@@/, "", line)
             gsub(/\/.*/, "", line)
             gsub(/\^.*/, "", line)
@@ -169,225 +182,213 @@ jobs:
             }
           }
           ' | sort -u > "$target_lw"
-
+          
+          # 检查输出有效
           if [ ! -s "$target_file" ]; then
-              echo "proxy-list.txt is empty, aborting" >&2
+              echo "proxy-list.txt 为空，终止提交" >&2
               rm -f "$temp_gfwlist" "$temp_decoded"
               exit 1
           fi
-
+          
           rm -f "$temp_gfwlist" "$temp_decoded"
 
-      - name: Commit & push
+      - name: 提交变更
         run: |
           git config --global user.name 'github-actions[bot]'
           git config --global user.email 'github-actions[bot]@users.noreply.github.com'
           git add proxy-list.txt direct-gfw.txt
-          git commit -m 'chore: sync gfwlist to proxy-list and direct-gfw' || echo "Nothing to commit"
+          git commit -m 'chore: 自动同步最新 gfwlist 生成 proxy-list 和 direct-gfw 列表' || echo "Nothing to commit"
           git push || echo "Nothing to push"
 
-  update-nft-base-ips:
+  update-nft-base-ips:  # 来自 nft-base-ips.yml
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
+      - name: 检出代码
         uses: actions/checkout@v6
 
-      - name: Install curl jq
-        run: sudo apt-get update && sudo apt-get install -y curl jq coreutils
+      - name: 安装依赖
+        run: sudo apt-get update && sudo apt-get install -y curl jq 
 
-      - name: Generate nft-base-ips.sh
+      - name: 生成 nft-base-ips.sh
         run: |
-          # Helper: fetch with retry and validate non-empty output
-          fetch_url() {
-            local url="$1"
-            local out="$2"
-            local retry=3
-            while [ $retry -gt 0 ]; do
-              if curl $CURL_OPTS -H "$CURL_CACHE_BUST" -H "$CURL_PRAGMA" -fsSL -o "$out" "$url" && [ -s "$out" ]; then
-                return 0
-              fi
-              echo "Retry $retry for $url" >&2
-              retry=$((retry - 1))
-              sleep 2
-            done
-            return 1
-          }
+          TMP_TG4=$(mktemp)
+          TMP_TG6=$(mktemp)
+          TMP_CF4=$(mktemp)
+          TMP_CF6=$(mktemp)
+          TMP_GIT_ALL=$(mktemp)
+          TMP_GIT4=$(mktemp)
+          TMP_GIT6=$(mktemp)
+          TMP_GOOGLE4=$(mktemp)
+          TMP_GOOGLE6=$(mktemp)
+          TMP_FACEBOOK4=$(mktemp)
+          TMP_FACEBOOK6=$(mktemp)
+          TMP_CFJSON4=$(mktemp)
+          TMP_CFJSON6=$(mktemp)
+          TMP_NETFLIX4=$(mktemp)
+          TMP_NETFLIX6=$(mktemp)
+          TMP_PRIVATE4=$(mktemp)
+          TMP_PRIVATE6=$(mktemp)
 
-          TMP_TG4="/tmp/tg4_$$"
-          TMP_TG6="/tmp/tg6_$$"
-          TMP_CF="/tmp/cf_$$"
-          TMP_GIT_ALL="/tmp/git_$$"
-          TMP_GIT4="/tmp/g4_$$"
-          TMP_GIT6="/tmp/g6_$$"
-          TMP_GOOGLE="/tmp/goog_$$"
-          TMP_GOOGLE4="/tmp/g4o_$$"
-          TMP_GOOGLE6="/tmp/g6o_$$"
-          TMP_FACEBOOK="/tmp/fb_$$"
-          TMP_FACEBOOK4="/tmp/fb4_$$"
-          TMP_FACEBOOK6="/tmp/fb6_$$"
-          TMP_CFJSON="/tmp/cfj_$$"
-          TMP_CFJSON4="/tmp/cf4_$$"
-          TMP_CFJSON6="/tmp/cf6_$$"
-          TMP_NETFLIX="/tmp/nf_$$"
-          TMP_NETFLIX4="/tmp/nf4_$$"
-          TMP_NETFLIX6="/tmp/nf6_$$"
-          TMP_PRIVATE="/tmp/priv_$$"
-          TMP_PRIVATE4="/tmp/p4_$$"
-          TMP_PRIVATE6="/tmp/p6_$$"
-
-          # Shared MetaCubeX JSON - fetch once, reuse for v4/v6
-          META_BASE="https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/refs/heads/sing/geo/geoip"
-
-          # Telegram (no JSON, direct text)
-          echo "Fetching Telegram CIDRs..."
-          curl $CURL_OPTS -H "$CURL_CACHE_BUST" -H "$CURL_PRAGMA" -s "https://core.telegram.org/resources/cidr.txt" | \
-            grep -Ev '^\s*#|^$' | \
-            grep -E '^([0-9]{1,3}\.){3}[0-9]{1,3}(\/[0-9]{1,2})?$' | \
-            sort -u > "$TMP_TG4" || true
-          curl $CURL_OPTS -H "$CURL_CACHE_BUST" -H "$CURL_PRAGMA" -s "https://core.telegram.org/resources/cidr.txt" | \
-            grep ':' | grep / | sort -u > "$TMP_TG6" || true
+          # Telegram
+          curl -fsSL "https://core.telegram.org/resources/cidr.txt" |
+            grep -Ev '^\s*#|^$' |
+            grep -E '^([0-9]{1,3}\.){3}[0-9]{1,3}(\/[0-9]{1,2})?$' |
+            sort -u > "$TMP_TG4"
+          curl -fsSL "https://core.telegram.org/resources/cidr.txt" |
+            grep ':' | grep / | sort -u > "$TMP_TG6"
 
           # Cloudflare
-          echo "Fetching Cloudflare..."
-          if fetch_url "$META_BASE/cloudflare.json" "$TMP_CF"; then
-            jq -r '(.rules[] | .ip_cidr[])' "$TMP_CF" 2>/dev/null | \
-              grep -E '^([0-9]{1,3}\.){3}[0-9]{1,3}(\/[0-9]{1,2})?$' | sort -u > "$TMP_CF4" || true
-            jq -r '(.rules[] | .ip_cidr[])' "$TMP_CF" 2>/dev/null | \
-              grep ':' | sort -u > "$TMP_CF6" || true
-          fi
+          curl -fsSL "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/refs/heads/sing/geo/geoip/cloudflare.json" |
+            jq -r '[.rules[].ip_cidr[]] | .[]' |
+            grep -E '^([0-9]{1,3}\.){3}[0-9]{1,3}(\/[0-9]{1,2})?$' |
+            sort -u > "$TMP_CF4"
+          curl -fsSL "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/refs/heads/sing/geo/geoip/cloudflare.json" |
+            jq -r '[.rules[].ip_cidr[]] | .[]' |
+            grep ':' | sort -u > "$TMP_CF6"
 
-          # GitHub (rate-limit aware)
-          echo "Fetching GitHub..."
-          if curl $CURL_OPTS -H "$CURL_CACHE_BUST" -H "$CURL_PRAGMA" -fsSL -o "$TMP_GIT_ALL" "https://api.github.com/meta" && [ -s "$TMP_GIT_ALL" ]; then
-            jq -r '.git[]' "$TMP_GIT_ALL" 2>/dev/null | sort -u > "$TMP_GIT_ALL.tmp" && mv "$TMP_GIT_ALL.tmp" "$TMP_GIT_ALL"
-            grep -E '^([0-9]{1,3}\.){3}[0-9]{1,3}(\/[0-9]{1,2})?$' "$TMP_GIT_ALL" > "$TMP_GIT4" || true
-            grep -E ':' "$TMP_GIT_ALL" > "$TMP_GIT6" || true
-          else
-            echo "GitHub API failed, using empty list" >&2
-            touch "$TMP_GIT_ALL" "$TMP_GIT4" "$TMP_GIT6"
-          fi
+          # GitHub
+          curl -fsSL "https://api.github.com/meta" | jq -r '.git[]' | sort -u > "$TMP_GIT_ALL"
+          grep -E '^([0-9]{1,3}\.){3}[0-9]{1,3}(\/[0-9]{1,2})?$' "$TMP_GIT_ALL" > "$TMP_GIT4"
+          grep -E ':' "$TMP_GIT_ALL" > "$TMP_GIT6"
 
           # Google
-          echo "Fetching Google..."
-          if fetch_url "$META_BASE/google.json" "$TMP_GOOGLE"; then
-            jq -r '(.rules[] | .ip_cidr[])' "$TMP_GOOGLE" 2>/dev/null | \
-              grep -E '^([0-9]{1,3}\.){3}[0-9]{1,3}(\/[0-9]{1,2})?$' | sort -u > "$TMP_GOOGLE4" || true
-            jq -r '(.rules[] | .ip_cidr[])' "$TMP_GOOGLE" 2>/dev/null | \
-              grep ':' | sort -u > "$TMP_GOOGLE6" || true
-          fi
+          curl -fsSL "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/refs/heads/sing/geo/geoip/google.json" |
+            jq -r '[.rules[].ip_cidr[]] | .[]' |
+            grep -E '^([0-9]{1,3}\.){3}[0-9]{1,3}(\/[0-9]{1,2})?$' |
+            sort -u > "$TMP_GOOGLE4"
+          curl -fsSL "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/refs/heads/sing/geo/geoip/google.json" |
+            jq -r '[.rules[].ip_cidr[]] | .[]' |
+            grep ':' | sort -u > "$TMP_GOOGLE6"
 
           # Facebook
-          echo "Fetching Facebook..."
-          if fetch_url "$META_BASE/facebook.json" "$TMP_FACEBOOK"; then
-            jq -r '(.rules[] | .ip_cidr[])' "$TMP_FACEBOOK" 2>/dev/null | \
-              grep -E '^([0-9]{1,3}\.){3}[0-9]{1,3}(\/[0-9]{1,2})?$' | sort -u > "$TMP_FACEBOOK4" || true
-            jq -r '(.rules[] | .ip_cidr[])' "$TMP_FACEBOOK" 2>/dev/null | \
-              grep ':' | sort -u > "$TMP_FACEBOOK6" || true
-          fi
+          curl -fsSL "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/refs/heads/sing/geo/geoip/facebook.json" |
+            jq -r '[.rules[].ip_cidr[]] | .[]' |
+            grep -E '^([0-9]{1,3}\.){3}[0-9]{1,3}(\/[0-9]{1,2})?$' |
+            sort -u > "$TMP_FACEBOOK4"
+          curl -fsSL "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/refs/heads/sing/geo/geoip/facebook.json" |
+            jq -r '[.rules[].ip_cidr[]] | .[]' |
+            grep ':' | sort -u > "$TMP_FACEBOOK6"
 
           # CloudFront
-          echo "Fetching CloudFront..."
-          if fetch_url "$META_BASE/cloudfront.json" "$TMP_CFJSON"; then
-            jq -r '(.rules[] | .ip_cidr[])' "$TMP_CFJSON" 2>/dev/null | \
-              grep -E '^([0-9]{1,3}\.){3}[0-9]{1,3}(\/[0-9]{1,2})?$' | sort -u > "$TMP_CFJSON4" || true
-            jq -r '(.rules[] | .ip_cidr[])' "$TMP_CFJSON" 2>/dev/null | \
-              grep ':' | sort -u > "$TMP_CFJSON6" || true
-          fi
+          curl -fsSL "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/refs/heads/sing/geo/geoip/cloudfront.json" |
+            jq -r '[.rules[].ip_cidr[]] | .[]' |
+            grep -E '^([0-9]{1,3}\.){3}[0-9]{1,3}(\/[0-9]{1,2})?$' |
+            sort -u > "$TMP_CFJSON4"
+          curl -fsSL "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/refs/heads/sing/geo/geoip/cloudfront.json" |
+            jq -r '[.rules[].ip_cidr[]] | .[]' |
+            grep ':' | sort -u > "$TMP_CFJSON6"
 
           # Netflix
-          echo "Fetching Netflix..."
-          if fetch_url "$META_BASE/netflix.json" "$TMP_NETFLIX"; then
-            jq -r '(.rules[] | .ip_cidr[])' "$TMP_NETFLIX" 2>/dev/null | \
-              grep -E '^([0-9]{1,3}\.){3}[0-9]{1,3}(\/[0-9]{1,2})?$' | sort -u > "$TMP_NETFLIX4" || true
-            jq -r '(.rules[] | .ip_cidr[])' "$TMP_NETFLIX" 2>/dev/null | \
-              grep ':' | sort -u > "$TMP_NETFLIX6" || true
-          fi
+          curl -fsSL "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/refs/heads/sing/geo/geoip/netflix.json" |
+            jq -r '[.rules[].ip_cidr[]] | .[]' |
+            grep -E '^([0-9]{1,3}\.){3}[0-9]{1,3}(\/[0-9]{1,2})?$' |
+            sort -u > "$TMP_NETFLIX4"
+          curl -fsSL "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/refs/heads/sing/geo/geoip/netflix.json" |
+            jq -r '[.rules[].ip_cidr[]] | .[]' |
+            grep ':' | sort -u > "$TMP_NETFLIX6"
 
           # Private
-          echo "Fetching Private..."
-          if fetch_url "$META_BASE/private.json" "$TMP_PRIVATE"; then
-            jq -r '(.rules[] | .ip_cidr[])' "$TMP_PRIVATE" 2>/dev/null | \
-              grep -E '^([0-9]{1,3}\.){3}[0-9]{1,3}(\/[0-9]{1,2})?$' | sort -u > "$TMP_PRIVATE4" || true
-            jq -r '(.rules[] | .ip_cidr[])' "$TMP_PRIVATE" 2>/dev/null | \
-              grep ':' | sort -u > "$TMP_PRIVATE6" || true
-          fi
+          curl -fsSL "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/refs/heads/sing/geo/geoip/private.json" |
+            jq -r '[.rules[].ip_cidr[]] | .[]' |
+            grep -E '^([0-9]{1,3}\.){3}[0-9]{1,3}(\/[0-9]{1,2})?$' |
+            sort -u > "$TMP_PRIVATE4"
+          curl -fsSL "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/refs/heads/sing/geo/geoip/private.json" |
+            jq -r '[.rules[].ip_cidr[]] | .[]' |
+            grep ':' | sort -u > "$TMP_PRIVATE6"
 
-          # v4 + v6 combined
           {
             echo "#!/bin/sh"
             echo "# Private"
-            echo "nft add element inet proxy private_ips  { $(paste -sd, "$TMP_PRIVATE4") }"
-            echo "nft add element inet proxy private_ips6 { $(paste -sd, "$TMP_PRIVATE6") }"
+            echo "nft add element inet proxy private_ips  { \
+            $(paste -sd, "$TMP_PRIVATE4") }"
+            echo "nft add element inet proxy private_ips6 { \
+            $(paste -sd, "$TMP_PRIVATE6") }"
             echo "# Telegram"
-            echo "nft add element inet proxy ips { $(paste -sd, "$TMP_TG4") }"
-            echo "nft add element inet proxy ips6 { $(paste -sd, "$TMP_TG6") }"
+            echo "nft add element inet proxy ips { \
+            $(paste -sd, "$TMP_TG4") }"
+            echo "nft add element inet proxy ips6 { \
+            $(paste -sd, "$TMP_TG6") }"
             echo "# Cloudflare"
-            echo "nft add element inet proxy ips { $(paste -sd, "$TMP_CF4") }"
-            echo "nft add element inet proxy ips6 { $(paste -sd, "$TMP_CF6") }"
+            echo "nft add element inet proxy ips { \
+            $(paste -sd, "$TMP_CF4") }"
+            echo "nft add element inet proxy ips6 { \
+            $(paste -sd, "$TMP_CF6") }"
             echo "# GitHub"
-            echo "nft add element inet proxy ips { $(paste -sd, "$TMP_GIT4") }"
-            echo "nft add element inet proxy ips6 { $(paste -sd, "$TMP_GIT6") }"
+            echo "nft add element inet proxy ips { \
+            $(paste -sd, "$TMP_GIT4") }"
+            echo "nft add element inet proxy ips6 { \
+            $(paste -sd, "$TMP_GIT6") }"
             echo "# Google"
-            echo "nft add element inet proxy ips { $(paste -sd, "$TMP_GOOGLE4") }"
-            echo "nft add element inet proxy ips6 { $(paste -sd, "$TMP_GOOGLE6") }"
+            echo "nft add element inet proxy ips { \
+            $(paste -sd, "$TMP_GOOGLE4") }"
+            echo "nft add element inet proxy ips6 { \
+            $(paste -sd, "$TMP_GOOGLE6") }"
             echo "# Facebook"
-            echo "nft add element inet proxy ips { $(paste -sd, "$TMP_FACEBOOK4") }"
-            echo "nft add element inet proxy ips6 { $(paste -sd, "$TMP_FACEBOOK6") }"
+            echo "nft add element inet proxy ips { \
+            $(paste -sd, "$TMP_FACEBOOK4") }"
+            echo "nft add element inet proxy ips6 { \
+            $(paste -sd, "$TMP_FACEBOOK6") }"
             echo "# CloudFront"
-            echo "nft add element inet proxy ips { $(paste -sd, "$TMP_CFJSON4") }"
-            echo "nft add element inet proxy ips6 { $(paste -sd, "$TMP_CFJSON6") }"
+            echo "nft add element inet proxy ips { \
+            $(paste -sd, "$TMP_CFJSON4") }"
+            echo "nft add element inet proxy ips6 { \
+            $(paste -sd, "$TMP_CFJSON6") }"
             echo "# Netflix"
-            echo "nft add element inet proxy ips { $(paste -sd, "$TMP_NETFLIX4") }"
-            echo "nft add element inet proxy ips6 { $(paste -sd, "$TMP_NETFLIX6") }"
+            echo "nft add element inet proxy ips { \
+            $(paste -sd, "$TMP_NETFLIX4") }"
+            echo "nft add element inet proxy ips6 { \
+            $(paste -sd, "$TMP_NETFLIX6") }"
           } > nft-base-ips6.sh
 
-          # v4 only
+          # 仅v4
           {
             echo "#!/bin/sh"
             echo "# Private"
-            echo "nft add element inet proxy private_ips  { $(paste -sd, "$TMP_PRIVATE4") }"
+            echo "nft add element inet proxy private_ips  { \
+            $(paste -sd, "$TMP_PRIVATE4") }"
             echo "# Telegram"
-            echo "nft add element inet proxy ips { $(paste -sd, "$TMP_TG4") }"
+            echo "nft add element inet proxy ips { \
+            $(paste -sd, "$TMP_TG4") }"
             echo "# Cloudflare"
-            echo "nft add element inet proxy ips { $(paste -sd, "$TMP_CF4") }"
+            echo "nft add element inet proxy ips { \
+            $(paste -sd, "$TMP_CF4") }"
             echo "# GitHub"
-            echo "nft add element inet proxy ips { $(paste -sd, "$TMP_GIT4") }"
+            echo "nft add element inet proxy ips { \
+            $(paste -sd, "$TMP_GIT4") }"
             echo "# Google"
-            echo "nft add element inet proxy ips { $(paste -sd, "$TMP_GOOGLE4") }"
+            echo "nft add element inet proxy ips { \
+            $(paste -sd, "$TMP_GOOGLE4") }"
             echo "# Facebook"
-            echo "nft add element inet proxy ips { $(paste -sd, "$TMP_FACEBOOK4") }"
+            echo "nft add element inet proxy ips { \
+            $(paste -sd, "$TMP_FACEBOOK4") }"
             echo "# CloudFront"
-            echo "nft add element inet proxy ips { $(paste -sd, "$TMP_CFJSON4") }"
+            echo "nft add element inet proxy ips { \
+            $(paste -sd, "$TMP_CFJSON4") }"
             echo "# Netflix"
-            echo "nft add element inet proxy ips { $(paste -sd, "$TMP_NETFLIX4") }"
+            echo "nft add element inet proxy ips { \
+            $(paste -sd, "$TMP_NETFLIX4") }"
           } > nft-base-ips4.sh
 
-          rm -f "$TMP_TG4" "$TMP_TG6" "$TMP_CF" "$TMP_CF4" "$TMP_CF6" \
-                "$TMP_GIT_ALL" "$TMP_GIT4" "$TMP_GIT6" \
-                "$TMP_GOOGLE" "$TMP_GOOGLE4" "$TMP_GOOGLE6" \
-                "$TMP_FACEBOOK" "$TMP_FACEBOOK4" "$TMP_FACEBOOK6" \
-                "$TMP_CFJSON" "$TMP_CFJSON4" "$TMP_CFJSON6" \
-                "$TMP_NETFLIX" "$TMP_NETFLIX4" "$TMP_NETFLIX6" \
-                "$TMP_PRIVATE" "$TMP_PRIVATE4" "$TMP_PRIVATE6"
-
-      - name: Commit & push
+          rm -f "$TMP_TG4" "$TMP_TG6" "$TMP_CF4" "$TMP_CF6" "$TMP_GIT_ALL" "$TMP_GIT4" "$TMP_GIT6" "$TMP_GOOGLE4" "$TMP_GOOGLE6" "$TMP_FACEBOOK4" "$TMP_FACEBOOK6" "$TMP_CFJSON4" "$TMP_CFJSON6" "$TMP_NETFLIX4" "$TMP_NETFLIX6" "$TMP_PRIVATE4" "$TMP_PRIVATE6"
+          
+      - name: 提交变更
         run: |
           git config --global user.name 'github-actions[bot]'
           git config --global user.email 'github-actions[bot]@users.noreply.github.com'
           git add nft-base-ips4.sh nft-base-ips6.sh
-          git commit -m 'chore: sync latest CIDR data for nft' || echo "Nothing to commit"
+          git commit -m 'chore: 自动同步最新cidr nft' || echo "Nothing to commit"
           git push || echo "Nothing to push"
 
-  generate-proxy-plus:
+  generate-proxy-plus:  # 来自 proxy-plus.yml
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
+      - name: 检出代码
         uses: actions/checkout@v6
 
-      - name: Install curl
+      - name: 安装依赖
         run: sudo apt-get update && sudo apt-get install -y curl
 
-      - name: Generate proxy-plus.txt
+      - name: 生成 proxy-plus.txt
         run: |
           set -eo pipefail
           urls=(
@@ -407,46 +408,41 @@ jobs:
             "https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Clash/Bahamut/Bahamut.list"
             "https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Clash/Python/Python.list"
           )
-          tmp="/tmp/gen_$$"
+          tmp=$(mktemp)
           for url in "${urls[@]}"; do
-            echo "Fetching $url"
-            curl $CURL_OPTS -H "$CURL_CACHE_BUST" -H "$CURL_PRAGMA" -s "$url" | grep -E '^DOMAIN,|^DOMAIN-SUFFIX,' | sed 's/^DOMAIN,/full:/; s/^DOMAIN-SUFFIX,/domain:/' >> "$tmp" || echo "warning: fetch failed $url" >&2
+            echo "fetching $url" >&2
+            curl $DEFAULT_CURL_ARGS "$url" | grep -E '^DOMAIN,|^DOMAIN-SUFFIX,' | sed 's/^DOMAIN,/full:/; s/^DOMAIN-SUFFIX,/domain:/' >> "$tmp" || echo "warning: fetch failed $url" >&2
             sleep "$SLEEP_BETWEEN_REQUESTS"
           done
           sort -u "$tmp" | grep -v "\.cn$" > proxy-plus.txt
           rm -f "$tmp"
 
-      - name: Commit & push
+      - name: 提交变更
         run: |
           git config --global user.name 'github-actions[bot]'
           git config --global user.email 'github-actions[bot]@users.noreply.github.com'
           git add proxy-plus.txt
-          git commit -m 'feat: auto-generate proxy-plus domain rules' || true
+          git commit -m 'feat: 自动生成 proxy-plus 域名规则' || true
           git push || true
 
   update-mihomo:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
+      - name: 检出代码
         uses: actions/checkout@v6
-
-      - name: Install curl
-        run: sudo apt-get update && sudo apt-get install -y curl
-
-      - name: Create mihomo directory
+      - name: 安装依赖
+        run: sudo apt-get update && sudo apt-get install -y curl wget
+      - name: 创建 mihomo 目录
         run: mkdir -p mihomo
-
-      - name: Generate mihomo/ad.list
+      - name: 生成 mihomo/ad.list
         run: |
           set -eo pipefail
-          echo "Fetching AWAvenue Ads Rule..."
-          curl $CURL_OPTS -H "$CURL_CACHE_BUST" -H "$CURL_PRAGMA" -s "https://raw.githubusercontent.com/TG-Twilight/AWAvenue-Ads-Rule/main/AWAvenue-Ads-Rule.txt" | \
+          curl -s "https://raw.githubusercontent.com/TG-Twilight/AWAvenue-Ads-Rule/main/AWAvenue-Ads-Rule.txt" | \
             grep -Ev '^[@#!;[]' | \
             grep -Ev '^\s*$' | \
             grep -Ev '\*' | \
             grep -Ev '/.*' | \
-            awk '
-            {
+            awk '{
               line = $0
               if (line ~ /^\|\|/) {
                 gsub(/^\|\|/, "", line)
@@ -459,24 +455,22 @@ jobs:
               }
             }' | \
             sort -u > mihomo/ad.list
-
-      - name: Generate mihomo/proxy.list and mihomo/direct.list
+      - name: 生成 mihomo/proxy.list 和 mihomo/direct.list
         run: |
           set -eo pipefail
-          temp_gfwlist="/tmp/gfwlist2_$$"
-          temp_decoded="/tmp/decoded2_$$"
-
-          echo "Fetching gfwlist..."
-          curl $CURL_OPTS -H "$CURL_CACHE_BUST" -H "$CURL_PRAGMA" -o "$temp_gfwlist" "https://raw.githubusercontent.com/gfwlist/gfwlist/master/gfwlist.txt"
+          temp_gfwlist=$(mktemp)
+          temp_decoded=$(mktemp)
+          wget --no-proxy -q -O "$temp_gfwlist" "https://raw.githubusercontent.com/gfwlist/gfwlist/master/gfwlist.txt"
           base64 -d < "$temp_gfwlist" > "$temp_decoded"
-
-          # ========== proxy.list ==========
+          
+          # ========== 生成 mihomo/proxy.list ==========
           grep -vE '^!|^\[|^@@|^$' "$temp_decoded" | \
           awk '
           /^\/.*\/$/ { next }
           /\*/ { next }
           {
             line = $0
+            # ||domain — DOMAIN-SUFFIX
             if (line ~ /^\|\|/) {
               gsub(/^\|\|/, "", line)
               gsub(/\/.*/, "", line)
@@ -485,6 +479,7 @@ jobs:
                 print "DOMAIN-SUFFIX," line
               next
             }
+            # |http://domain — DOMAIN (精确匹配)
             if (line ~ /^\|https?:\/\//) {
               gsub(/^\|https?:\/\//, "", line)
               gsub(/\/.*/, "", line)
@@ -493,6 +488,7 @@ jobs:
                 print "DOMAIN," line
               next
             }
+            # .domain — DOMAIN-SUFFIX
             if (line ~ /^\./) {
               gsub(/^\./, "", line)
               gsub(/\/.*/, "", line)
@@ -501,6 +497,7 @@ jobs:
                 print "DOMAIN-SUFFIX," line
               next
             }
+            # 裸域名/关键词
             gsub(/\/.*/, "", line)
             gsub(/\^.*/, "", line)
             if (line != "" && line !~ /^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$/ && line !~ /^(http|https):/) {
@@ -511,13 +508,14 @@ jobs:
             }
           }
           ' | sort -u > mihomo/proxy.list
-
-          # ========== direct.list (whitelist) ==========
+          
+          # ========== 生成 mihomo/direct.list（白名单）==========
           grep '^@@' "$temp_decoded" | grep -v '^@@/' | \
           awk '
           /\*/ { next }
           {
             line = $0
+            # @@||domain — DOMAIN-SUFFIX
             if (line ~ /^@@\|\|/) {
               gsub(/^@@\|\|/, "", line)
               gsub(/\/.*/, "", line)
@@ -526,6 +524,7 @@ jobs:
                 print "DOMAIN-SUFFIX," line
               next
             }
+            # @@|http://domain — DOMAIN
             if (line ~ /^@@\|https?:\/\//) {
               gsub(/^@@\|https?:\/\//, "", line)
               gsub(/\/.*/, "", line)
@@ -534,6 +533,7 @@ jobs:
                 print "DOMAIN," line
               next
             }
+            # @@.domain — DOMAIN-SUFFIX
             if (line ~ /^@@\./) {
               gsub(/^@@\./, "", line)
               gsub(/\/.*/, "", line)
@@ -542,6 +542,7 @@ jobs:
                 print "DOMAIN-SUFFIX," line
               next
             }
+            # @@domain — 裸域名
             gsub(/^@@/, "", line)
             gsub(/\/.*/, "", line)
             gsub(/\^.*/, "", line)
@@ -553,59 +554,50 @@ jobs:
             }
           }
           ' | sort -u > mihomo/direct.list
-
+          
           rm -f "$temp_gfwlist" "$temp_decoded"
-
-      - name: Generate mihomo/proxy-plus.list
+      - name: 生成 mihomo/proxy-plus.list
+        run: |
+          {
+            curl -s https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Clash/TikTok/TikTok.list | grep -E '^DOMAIN,|^DOMAIN-SUFFIX,'
+            curl -s https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Clash/Disney/Disney.list | grep -E '^DOMAIN,|^DOMAIN-SUFFIX,'
+            curl -s https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Clash/Netflix/Netflix.list | grep -E '^DOMAIN,|^DOMAIN-SUFFIX,'
+            curl -s https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Clash/GitHub/GitHub.list | grep -E '^DOMAIN,|^DOMAIN-SUFFIX,'
+            curl -s https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Clash/Facebook/Facebook.list | grep -E '^DOMAIN,|^DOMAIN-SUFFIX,'
+            curl -s https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Clash/Twitter/Twitter.list | grep -E '^DOMAIN,|^DOMAIN-SUFFIX,'
+            curl -s https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Clash/Twitch/Twitch.list | grep -E '^DOMAIN,|^DOMAIN-SUFFIX,'
+            curl -s https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Clash/Spotify/Spotify.list | grep -E '^DOMAIN,|^DOMAIN-SUFFIX,'
+            curl -s https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Clash/Reddit/Reddit.list | grep -E '^DOMAIN,|^DOMAIN-SUFFIX,'
+            curl -s https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Clash/Telegram/Telegram.list | grep -E '^DOMAIN,|^DOMAIN-SUFFIX,'
+            curl -s https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Clash/Ubuntu/Ubuntu.list | grep -E '^DOMAIN,|^DOMAIN-SUFFIX,'
+            curl -s https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Clash/Amazon/Amazon.list | grep -E '^DOMAIN,|^DOMAIN-SUFFIX,'
+            curl -s https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Clash/Disqus/Disqus.list | grep -E '^DOMAIN,|^DOMAIN-SUFFIX,'
+            curl -s https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Clash/Bahamut/Bahamut.list | grep -E '^DOMAIN,|^DOMAIN-SUFFIX,'
+            curl -s https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Clash/Python/Python.list | grep -E '^DOMAIN,|^DOMAIN-SUFFIX,'
+          } | sort | uniq | grep -v "\.cn$" > mihomo/proxy-plus.list
+          
+      - name: 生成 mihomo/github-cidr.list
         run: |
           set -eo pipefail
-          urls=(
-            "https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Clash/TikTok/TikTok.list"
-            "https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Clash/Disney/Disney.list"
-            "https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Clash/Netflix/Netflix.list"
-            "https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Clash/GitHub/GitHub.list"
-            "https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Clash/Facebook/Facebook.list"
-            "https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Clash/Twitter/Twitter.list"
-            "https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Clash/Twitch/Twitch.list"
-            "https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Clash/Spotify/Spotify.list"
-            "https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Clash/Reddit/Reddit.list"
-            "https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Clash/Telegram/Telegram.list"
-            "https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Clash/Ubuntu/Ubuntu.list"
-            "https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Clash/Amazon/Amazon.list"
-            "https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Clash/Disqus/Disqus.list"
-            "https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Clash/Bahamut/Bahamut.list"
-            "https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Clash/Python/Python.list"
-          )
-          tmp="/tmp/gen2_$$"
-          for url in "${urls[@]}"; do
-            echo "Fetching $url"
-            curl $CURL_OPTS -H "$CURL_CACHE_BUST" -H "$CURL_PRAGMA" -s "$url" | grep -E '^DOMAIN,|^DOMAIN-SUFFIX,' >> "$tmp" || echo "warning: fetch failed $url" >&2
-            sleep "$SLEEP_BETWEEN_REQUESTS"
-          done
-          sort -u "$tmp" | grep -v "\.cn$" > mihomo/proxy-plus.list
-          rm -f "$tmp"
 
-      - name: Generate mihomo/github-cidr.list
-        run: |
-          set -eo pipefail
-          TMP_GIT_ALL="/tmp/git2_$$"
+          TMP_GIT_ALL=$(mktemp)
 
-          echo "Fetching GitHub meta..."
-          curl $CURL_OPTS -H "$CURL_CACHE_BUST" -H "$CURL_PRAGMA" -s "https://api.github.com/meta" | jq -r '(.git[], .copilot[])' | sort -u > "$TMP_GIT_ALL"
+          # GitHub IP（来自 GitHub API /meta，git 字段）
+          curl -fsSL "https://api.github.com/meta" | jq -r '(.git[], .copilot[])' | sort -u > "$TMP_GIT_ALL"
 
+          # 生成 github-cidr.list（IPv4 + IPv6 均支持 IP-CIDR / IP-CIDR6）
           {
             grep -E '^([0-9]{1,3}\.){3}[0-9]{1,3}(\/[0-9]{1,2})?$' "$TMP_GIT_ALL" | \
               awk '{print "IP-CIDR," $0 ",no-resolve"}'
             grep -E ':' "$TMP_GIT_ALL" | \
               awk '{print "IP-CIDR6," $0 ",no-resolve"}'
           } | sort -u > mihomo/github-cidr.list
-
+          
           rm -f "$TMP_GIT_ALL"
-
-      - name: Commit & push
+      - name: 提交变更
         run: |
           git config --global user.name 'github-actions[bot]'
           git config --global user.email 'github-actions[bot]@users.noreply.github.com'
           git add mihomo/
-          git commit -m 'feat: auto-generate mihomo rule files' || echo "Nothing to commit"
+          git commit -m 'feat: 自动生成 mihomo 规则文件' || echo "Nothing to commit"
           git push || echo "Nothing to push"
