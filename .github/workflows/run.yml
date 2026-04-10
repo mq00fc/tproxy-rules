@@ -3,7 +3,7 @@ name: Run All
 on:
   workflow_dispatch:
   schedule:
-    - cron: "0 * * * *"
+    - cron: "0 23,8 * * *"
 
 env:
   CURL_ARGS: "-fsSL --retry 3 --retry-delay 5 --connect-timeout 10 --max-time 30 -A 'tproxy-rules/automation (+https://github.com/mq00fc/tproxy-rules)'"
@@ -196,13 +196,20 @@ jobs:
 
       - name: Generate nft-base-ips.sh
         run: |
-          set -eo pipefail
-
-          # Helper: fetch JSON with cache-busting, extract field, save to tmp
-          fetch_json() {
+          # Helper: fetch with retry and validate non-empty output
+          fetch_url() {
             local url="$1"
-            local tmp="$2"
-            curl $CURL_NO_CACHE -s "$url" > "$tmp"
+            local out="$2"
+            local retry=3
+            while [ $retry -gt 0 ]; do
+              if curl $CURL_NO_CACHE -fsSL -o "$out" "$url" && [ -s "$out" ]; then
+                return 0
+              fi
+              echo "Retry $retry for $url" >&2
+              retry=$((retry - 1))
+              sleep 2
+            done
+            return 1
           }
 
           TMP_TG4=$(mktemp)
@@ -232,72 +239,77 @@ jobs:
 
           # Telegram (no JSON, direct text)
           echo "Fetching Telegram CIDRs..."
-          curl $CURL_NO_CACHE -s "https://core.telegram.org/resources/cidr.txt" |
-            grep -Ev '^\s*#|^$' |
-            grep -E '^([0-9]{1,3}\.){3}[0-9]{1,3}(\/[0-9]{1,2})?$' |
-            sort -u > "$TMP_TG4"
-          curl $CURL_NO_CACHE -s "https://core.telegram.org/resources/cidr.txt" |
-            grep ':' | grep / | sort -u > "$TMP_TG6"
+          curl $CURL_NO_CACHE -s "https://core.telegram.org/resources/cidr.txt" | \
+            grep -Ev '^\s*#|^$' | \
+            grep -E '^([0-9]{1,3}\.){3}[0-9]{1,3}(\/[0-9]{1,2})?$' | \
+            sort -u > "$TMP_TG4" || true
+          curl $CURL_NO_CACHE -s "https://core.telegram.org/resources/cidr.txt" | \
+            grep ':' | grep / | sort -u > "$TMP_TG6" || true
 
           # Cloudflare
           echo "Fetching Cloudflare..."
-          fetch_json "$META_BASE/cloudflare.json" "$TMP_CF"
-          jq -r '[.rules[].ip_cidr[]] | .[]' "$TMP_CF" |
-            grep -E '^([0-9]{1,3}\.){3}[0-9]{1,3}(\/[0-9]{1,2})?$' |
-            sort -u > "$TMP_CF4"
-          jq -r '[.rules[].ip_cidr[]] | .[]' "$TMP_CF" |
-            grep ':' | sort -u > "$TMP_CF6"
+          if fetch_url "$META_BASE/cloudflare.json" "$TMP_CF"; then
+            jq -r '[.rules[].ip_cidr[]] | .[]' "$TMP_CF" 2>/dev/null | \
+              grep -E '^([0-9]{1,3}\.){3}[0-9]{1,3}(\/[0-9]{1,2})?$' | sort -u > "$TMP_CF4" || true
+            jq -r '[.rules[].ip_cidr[]] | .[]' "$TMP_CF" 2>/dev/null | \
+              grep ':' | sort -u > "$TMP_CF6" || true
+          fi
 
-          # GitHub
+          # GitHub (rate-limit aware)
           echo "Fetching GitHub..."
-          curl $CURL_NO_CACHE -s "https://api.github.com/meta" | jq -r '.git[]' | sort -u > "$TMP_GIT_ALL"
-          grep -E '^([0-9]{1,3}\.){3}[0-9]{1,3}(\/[0-9]{1,2})?$' "$TMP_GIT_ALL" > "$TMP_GIT4"
-          grep -E ':' "$TMP_GIT_ALL" > "$TMP_GIT6"
+          if curl $CURL_NO_CACHE -fsSL -o "$TMP_GIT_ALL" "https://api.github.com/meta" && [ -s "$TMP_GIT_ALL" ]; then
+            jq -r '.git[]' "$TMP_GIT_ALL" 2>/dev/null | sort -u > "$TMP_GIT_ALL.tmp" && mv "$TMP_GIT_ALL.tmp" "$TMP_GIT_ALL"
+            grep -E '^([0-9]{1,3}\.){3}[0-9]{1,3}(\/[0-9]{1,2})?$' "$TMP_GIT_ALL" > "$TMP_GIT4" || true
+            grep -E ':' "$TMP_GIT_ALL" > "$TMP_GIT6" || true
+          else
+            echo "GitHub API failed, using empty list" >&2
+            touch "$TMP_GIT_ALL" "$TMP_GIT4" "$TMP_GIT6"
+          fi
 
           # Google
           echo "Fetching Google..."
-          fetch_json "$META_BASE/google.json" "$TMP_GOOGLE"
-          jq -r '[.rules[].ip_cidr[]] | .[]' "$TMP_GOOGLE" |
-            grep -E '^([0-9]{1,3}\.){3}[0-9]{1,3}(\/[0-9]{1,2})?$' |
-            sort -u > "$TMP_GOOGLE4"
-          jq -r '[.rules[].ip_cidr[]] | .[]' "$TMP_GOOGLE" |
-            grep ':' | sort -u > "$TMP_GOOGLE6"
+          if fetch_url "$META_BASE/google.json" "$TMP_GOOGLE"; then
+            jq -r '[.rules[].ip_cidr[]] | .[]' "$TMP_GOOGLE" 2>/dev/null | \
+              grep -E '^([0-9]{1,3}\.){3}[0-9]{1,3}(\/[0-9]{1,2})?$' | sort -u > "$TMP_GOOGLE4" || true
+            jq -r '[.rules[].ip_cidr[]] | .[]' "$TMP_GOOGLE" 2>/dev/null | \
+              grep ':' | sort -u > "$TMP_GOOGLE6" || true
+          fi
 
           # Facebook
           echo "Fetching Facebook..."
-          fetch_json "$META_BASE/facebook.json" "$TMP_FACEBOOK"
-          jq -r '[.rules[].ip_cidr[]] | .[]' "$TMP_FACEBOOK" |
-            grep -E '^([0-9]{1,3}\.){3}[0-9]{1,3}(\/[0-9]{1,2})?$' |
-            sort -u > "$TMP_FACEBOOK4"
-          jq -r '[.rules[].ip_cidr[]] | .[]' "$TMP_FACEBOOK" |
-            grep ':' | sort -u > "$TMP_FACEBOOK6"
+          if fetch_url "$META_BASE/facebook.json" "$TMP_FACEBOOK"; then
+            jq -r '[.rules[].ip_cidr[]] | .[]' "$TMP_FACEBOOK" 2>/dev/null | \
+              grep -E '^([0-9]{1,3}\.){3}[0-9]{1,3}(\/[0-9]{1,2})?$' | sort -u > "$TMP_FACEBOOK4" || true
+            jq -r '[.rules[].ip_cidr[]] | .[]' "$TMP_FACEBOOK" 2>/dev/null | \
+              grep ':' | sort -u > "$TMP_FACEBOOK6" || true
+          fi
 
           # CloudFront
           echo "Fetching CloudFront..."
-          fetch_json "$META_BASE/cloudfront.json" "$TMP_CFJSON"
-          jq -r '[.rules[].ip_cidr[]] | .[]' "$TMP_CFJSON" |
-            grep -E '^([0-9]{1,3}\.){3}[0-9]{1,3}(\/[0-9]{1,2})?$' |
-            sort -u > "$TMP_CFJSON4"
-          jq -r '[.rules[].ip_cidr[]] | .[]' "$TMP_CFJSON" |
-            grep ':' | sort -u > "$TMP_CFJSON6"
+          if fetch_url "$META_BASE/cloudfront.json" "$TMP_CFJSON"; then
+            jq -r '[.rules[].ip_cidr[]] | .[]' "$TMP_CFJSON" 2>/dev/null | \
+              grep -E '^([0-9]{1,3}\.){3}[0-9]{1,3}(\/[0-9]{1,2})?$' | sort -u > "$TMP_CFJSON4" || true
+            jq -r '[.rules[].ip_cidr[]] | .[]' "$TMP_CFJSON" 2>/dev/null | \
+              grep ':' | sort -u > "$TMP_CFJSON6" || true
+          fi
 
           # Netflix
           echo "Fetching Netflix..."
-          fetch_json "$META_BASE/netflix.json" "$TMP_NETFLIX"
-          jq -r '[.rules[].ip_cidr[]] | .[]' "$TMP_NETFLIX" |
-            grep -E '^([0-9]{1,3}\.){3}[0-9]{1,3}(\/[0-9]{1,2})?$' |
-            sort -u > "$TMP_NETFLIX4"
-          jq -r '[.rules[].ip_cidr[]] | .[]' "$TMP_NETFLIX" |
-            grep ':' | sort -u > "$TMP_NETFLIX6"
+          if fetch_url "$META_BASE/netflix.json" "$TMP_NETFLIX"; then
+            jq -r '[.rules[].ip_cidr[]] | .[]' "$TMP_NETFLIX" 2>/dev/null | \
+              grep -E '^([0-9]{1,3}\.){3}[0-9]{1,3}(\/[0-9]{1,2})?$' | sort -u > "$TMP_NETFLIX4" || true
+            jq -r '[.rules[].ip_cidr[]] | .[]' "$TMP_NETFLIX" 2>/dev/null | \
+              grep ':' | sort -u > "$TMP_NETFLIX6" || true
+          fi
 
           # Private
           echo "Fetching Private..."
-          fetch_json "$META_BASE/private.json" "$TMP_PRIVATE"
-          jq -r '[.rules[].ip_cidr[]] | .[]' "$TMP_PRIVATE" |
-            grep -E '^([0-9]{1,3}\.){3}[0-9]{1,3}(\/[0-9]{1,2})?$' |
-            sort -u > "$TMP_PRIVATE4"
-          jq -r '[.rules[].ip_cidr[]] | .[]' "$TMP_PRIVATE" |
-            grep ':' | sort -u > "$TMP_PRIVATE6"
+          if fetch_url "$META_BASE/private.json" "$TMP_PRIVATE"; then
+            jq -r '[.rules[].ip_cidr[]] | .[]' "$TMP_PRIVATE" 2>/dev/null | \
+              grep -E '^([0-9]{1,3}\.){3}[0-9]{1,3}(\/[0-9]{1,2})?$' | sort -u > "$TMP_PRIVATE4" || true
+            jq -r '[.rules[].ip_cidr[]] | .[]' "$TMP_PRIVATE" 2>/dev/null | \
+              grep ':' | sort -u > "$TMP_PRIVATE6" || true
+          fi
 
           # v4 + v6 combined
           {
