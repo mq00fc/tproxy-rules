@@ -1620,8 +1620,6 @@ domain:hiveon.net
 domain:hk.jiepang.com
 domain:hk01.com
 domain:hka8964.wordpress.com
-domain:hkacg.com
-domain:hkacg.net
 domain:hkanews.wordpress.com
 domain:hkbookcity.com
 domain:hkchronicles.com
@@ -2227,7 +2225,6 @@ domain:muzi.com
 domain:muzi.net
 domain:muzu.tv
 domain:mvg.jp
-domain:mx981.com
 domain:my-private-network.co.uk
 domain:my.pcloud.com
 domain:myaudiocast.com
@@ -2421,6 +2418,7 @@ domain:ooni.io
 domain:ooni.org
 domain:open.firstory.me
 domain:openai.com
+domain:openart.ai
 domain:opencritic.com
 domain:opendemocracy.net
 domain:openid.net
@@ -3512,7 +3510,6 @@ domain:vrchat.com
 domain:vrporn.com
 domain:vrsmash.com
 domain:vtunnel.com
-domain:vuku.cc
 domain:vultryhw.com
 domain:w-pool.com
 domain:waffle1999.com
@@ -3699,7 +3696,6 @@ domain:xiaxiaoqiang.net
 domain:xijie.wordpress.com
 domain:xinjiangpolicefiles.org
 domain:xinmiao.com.hk
-domain:xjp.cc
 domain:xjtravelguide.com
 domain:xm.com
 domain:xml-training-guide.com
