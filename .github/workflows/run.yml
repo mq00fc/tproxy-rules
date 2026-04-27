@@ -11,7 +11,7 @@ concurrency:
   cancel-in-progress: false
 
 env:
-  DEFAULT_CURL_ARGS: "-fsSL --retry 3 --retry-delay 5 --connect-timeout 10 --max-time 30 -A 'tproxy-rules/automation (+https://github.com/mq00fc/tproxy-rules)'"
+  DEFAULT_CURL_ARGS: "-fsSL --retry 3 --retry-delay 5 --connect-timeout 10 --max-time 30 -A 'tproxy-rules/automation'"
   SLEEP_BETWEEN_REQUESTS: "1"
 
 jobs:
@@ -19,7 +19,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: 检出代码
-        uses: actions/checkout@v4    
+        uses: actions/checkout@v6    
 
       - name: 安装 curl
         run: sudo apt-get update && sudo apt-get install -y curl
@@ -68,7 +68,7 @@ jobs:
     needs: update-adblock-plus       
     steps:
       - name: 检出代码
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: 安装依赖
         run: sudo apt-get update && sudo apt-get install -y wget
@@ -160,7 +160,7 @@ jobs:
     needs: update-gfwlist              
     steps:
       - name: 检出代码
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: 安装依赖
         run: sudo apt-get update && sudo apt-get install -y curl jq
@@ -284,7 +284,7 @@ jobs:
     needs: update-nft-base-ips           
     steps:
       - name: 检出代码
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: 安装依赖
         run: sudo apt-get update && sudo apt-get install -y curl wget
