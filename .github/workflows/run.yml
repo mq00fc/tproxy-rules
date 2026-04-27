@@ -245,12 +245,28 @@ jobs:
           curl -fsSL "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/refs/heads/sing/geo/geoip/cloudflare.json" |
             jq -r '[.rules[].ip_cidr[]] | .[]' |
             grep ':' | sort -u > "$TMP_CF6"
+			
+		 # 生成 cloudflare ipcidr
+          {
+            grep -E '^([0-9]{1,3}\.){3}[0-9]{1,3}(\/[0-9]{1,2})?$' "$TMP_CF4" | \
+              awk '{print "IP-CIDR," $0 ",no-resolve"}'
+            grep -E ':' "$TMP_CF6" | \
+              awk '{print "IP-CIDR6," $0 ",no-resolve"}'
+          } | sort -u > mihomo/cf-cidr.list
 
           # GitHub
           curl -fsSL "https://api.github.com/meta" | jq -r '.git[]' | sort -u > "$TMP_GIT_ALL"
           grep -E '^([0-9]{1,3}\.){3}[0-9]{1,3}(\/[0-9]{1,2})?$' "$TMP_GIT_ALL" > "$TMP_GIT4"
           grep -E ':' "$TMP_GIT_ALL" > "$TMP_GIT6"
-
+		  
+          # 生成 github-cidr.list（IPv4 + IPv6 均支持 IP-CIDR / IP-CIDR6）
+          {
+            grep -E '^([0-9]{1,3}\.){3}[0-9]{1,3}(\/[0-9]{1,2})?$' "$TMP_GIT_ALL" | \
+              awk '{print "IP-CIDR," $0 ",no-resolve"}'
+            grep -E ':' "$TMP_GIT_ALL" | \
+              awk '{print "IP-CIDR6," $0 ",no-resolve"}'
+          } | sort -u > mihomo/github-cidr.list
+		 
           # Google
           curl -fsSL "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/refs/heads/sing/geo/geoip/google.json" |
             jq -r '[.rules[].ip_cidr[]] | .[]' |
@@ -378,52 +394,6 @@ jobs:
           git add nft-base-ips4.sh nft-base-ips6.sh
           git commit -m 'chore: 自动同步最新cidr nft' || echo "Nothing to commit"
           git push || echo "Nothing to push"
-
-  generate-proxy-plus:  # 来自 proxy-plus.yml
-    runs-on: ubuntu-latest
-    steps:
-      - name: 检出代码
-        uses: actions/checkout@v6
-
-      - name: 安装依赖
-        run: sudo apt-get update && sudo apt-get install -y curl
-
-      - name: 生成 proxy-plus.txt
-        run: |
-          set -eo pipefail
-          urls=(
-            "https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Clash/TikTok/TikTok.list"
-            "https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Clash/Disney/Disney.list"
-            "https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Clash/Netflix/Netflix.list"
-            "https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Clash/GitHub/GitHub.list"
-            "https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Clash/Facebook/Facebook.list"
-            "https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Clash/Twitter/Twitter.list"
-            "https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Clash/Twitch/Twitch.list"
-            "https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Clash/Spotify/Spotify.list"
-            "https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Clash/Reddit/Reddit.list"
-            "https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Clash/Telegram/Telegram.list"
-            "https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Clash/Ubuntu/Ubuntu.list"
-            "https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Clash/Amazon/Amazon.list"
-            "https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Clash/Disqus/Disqus.list"
-            "https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Clash/Bahamut/Bahamut.list"
-            "https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Clash/Python/Python.list"
-          )
-          tmp=$(mktemp)
-          for url in "${urls[@]}"; do
-            echo "fetching $url" >&2
-            curl $DEFAULT_CURL_ARGS "$url" | grep -E '^DOMAIN,|^DOMAIN-SUFFIX,' | sed 's/^DOMAIN,/full:/; s/^DOMAIN-SUFFIX,/domain:/' >> "$tmp" || echo "warning: fetch failed $url" >&2
-            sleep "$SLEEP_BETWEEN_REQUESTS"
-          done
-          sort -u "$tmp" | grep -v "\.cn$" > proxy-plus.txt
-          rm -f "$tmp"
-
-      - name: 提交变更
-        run: |
-          git config --global user.name 'github-actions[bot]'
-          git config --global user.email 'github-actions[bot]@users.noreply.github.com'
-          git add proxy-plus.txt
-          git commit -m 'feat: 自动生成 proxy-plus 域名规则' || true
-          git push || true
 
   update-mihomo:
     runs-on: ubuntu-latest
@@ -556,44 +526,7 @@ jobs:
           ' | sort -u > mihomo/direct.list
           
           rm -f "$temp_gfwlist" "$temp_decoded"
-      - name: 生成 mihomo/proxy-plus.list
-        run: |
-          {
-            curl -s https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Clash/TikTok/TikTok.list | grep -E '^DOMAIN,|^DOMAIN-SUFFIX,'
-            curl -s https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Clash/Disney/Disney.list | grep -E '^DOMAIN,|^DOMAIN-SUFFIX,'
-            curl -s https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Clash/Netflix/Netflix.list | grep -E '^DOMAIN,|^DOMAIN-SUFFIX,'
-            curl -s https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Clash/GitHub/GitHub.list | grep -E '^DOMAIN,|^DOMAIN-SUFFIX,'
-            curl -s https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Clash/Facebook/Facebook.list | grep -E '^DOMAIN,|^DOMAIN-SUFFIX,'
-            curl -s https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Clash/Twitter/Twitter.list | grep -E '^DOMAIN,|^DOMAIN-SUFFIX,'
-            curl -s https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Clash/Twitch/Twitch.list | grep -E '^DOMAIN,|^DOMAIN-SUFFIX,'
-            curl -s https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Clash/Spotify/Spotify.list | grep -E '^DOMAIN,|^DOMAIN-SUFFIX,'
-            curl -s https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Clash/Reddit/Reddit.list | grep -E '^DOMAIN,|^DOMAIN-SUFFIX,'
-            curl -s https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Clash/Telegram/Telegram.list | grep -E '^DOMAIN,|^DOMAIN-SUFFIX,'
-            curl -s https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Clash/Ubuntu/Ubuntu.list | grep -E '^DOMAIN,|^DOMAIN-SUFFIX,'
-            curl -s https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Clash/Amazon/Amazon.list | grep -E '^DOMAIN,|^DOMAIN-SUFFIX,'
-            curl -s https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Clash/Disqus/Disqus.list | grep -E '^DOMAIN,|^DOMAIN-SUFFIX,'
-            curl -s https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Clash/Bahamut/Bahamut.list | grep -E '^DOMAIN,|^DOMAIN-SUFFIX,'
-            curl -s https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Clash/Python/Python.list | grep -E '^DOMAIN,|^DOMAIN-SUFFIX,'
-          } | sort | uniq | grep -v "\.cn$" > mihomo/proxy-plus.list
           
-      - name: 生成 mihomo/github-cidr.list
-        run: |
-          set -eo pipefail
-
-          TMP_GIT_ALL=$(mktemp)
-
-          # GitHub IP（来自 GitHub API /meta，git 字段）
-          curl -fsSL "https://api.github.com/meta" | jq -r '(.git[], .copilot[])' | sort -u > "$TMP_GIT_ALL"
-
-          # 生成 github-cidr.list（IPv4 + IPv6 均支持 IP-CIDR / IP-CIDR6）
-          {
-            grep -E '^([0-9]{1,3}\.){3}[0-9]{1,3}(\/[0-9]{1,2})?$' "$TMP_GIT_ALL" | \
-              awk '{print "IP-CIDR," $0 ",no-resolve"}'
-            grep -E ':' "$TMP_GIT_ALL" | \
-              awk '{print "IP-CIDR6," $0 ",no-resolve"}'
-          } | sort -u > mihomo/github-cidr.list
-          
-          rm -f "$TMP_GIT_ALL"
       - name: 提交变更
         run: |
           git config --global user.name 'github-actions[bot]'
