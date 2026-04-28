@@ -3391,6 +3391,7 @@ domain:updates.tdesktop.com
 domain:upghsbc.com
 domain:upmedia.mg
 domain:uproxy.org
+domain:upsangel.com
 domain:uptodown.com
 domain:uraban.me
 domain:urbandictionary.com
