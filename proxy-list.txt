@@ -2918,6 +2918,7 @@ domain:socialblade.com
 domain:socks-proxy.net
 domain:sockslist.net
 domain:softether-download.com
+domain:softether.co.jp
 domain:softether.org
 domain:softfamous.com
 domain:softwarebychuck.com
