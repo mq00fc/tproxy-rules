@@ -2801,9 +2801,6 @@ domain:savetibet.org
 domain:savetibetstore.org
 domain:saveuighur.org
 domain:sbti.unun.dev
-domain:scache.vzw.com
-domain:scache1.vzw.com
-domain:scache2.vzw.com
 domain:schema.org
 domain:scmp.com
 domain:scramble.io
@@ -2975,7 +2972,6 @@ domain:springwood.me
 domain:sproutcore.com
 domain:squirrelvpn.com
 domain:ss-link.com
-domain:ss7.vzw.com
 domain:ssl.webpack.de
 domain:sspanel.net
 domain:ssr.tools
