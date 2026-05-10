@@ -793,6 +793,7 @@ domain:darpa.mil
 domain:darrenliuwei.com
 domain:dashlane.com
 domain:data-vocabulary.org
+domain:data18.com
 domain:daum.net
 domain:dawangidc.com
 domain:daxa.cn
@@ -899,6 +900,7 @@ domain:dropbooks.tv
 domain:dropbox.com
 domain:dropboxapi.com
 domain:dropboxusercontent.com
+domain:dt18.com
 domain:dtiblog.com
 domain:dtic.mil
 domain:dubox.com
