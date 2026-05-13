@@ -628,6 +628,7 @@ domain:chineseradioseattle.com
 domain:chineseupress.com
 domain:chingcheong.com
 domain:chobit.cc
+domain:chonglangtv.org
 domain:christianfreedom.org
 domain:christianstudy.com
 domain:christiantimes.org.hk
