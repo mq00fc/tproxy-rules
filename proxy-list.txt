@@ -2888,6 +2888,7 @@ domain:showwe.tw
 domain:shutterstock.com
 domain:shwchurch.org
 domain:sidelinesnews.com
+domain:sider.ai
 domain:signal.org
 domain:silvergatebank.com
 domain:simbolostwitter.com
