@@ -118,6 +118,7 @@ domain:adsfile.qq.com
 domain:adsfilebssdlbig.ali.kugou.com
 domain:adsfileretry.service.kugou.com
 domain:adsfs-sdkconfig.heytapimage.com
+domain:adsfs.heytapimage.com
 domain:adsfs.oppomobile.com
 domain:adslvfile.qq.com
 domain:adsmart.konka.com
@@ -338,7 +339,6 @@ domain:domain.aishengji.com
 domain:doubleclick-cn.net
 domain:download.changhong.upgrade2.huan.tv
 domain:downloadxml.changhong.upgrade2.huan.tv
-domain:drcn-weather.cloud.huawei.com
 domain:dsp-x.jd.com
 domain:dsp.fcbox.com
 domain:dualstack-logs.amap.com
