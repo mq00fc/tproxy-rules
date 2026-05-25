@@ -2235,6 +2235,7 @@ domain:mos.ru
 domain:mosavi.io
 domain:movements.org
 domain:moviefap.com
+domain:mozilla.ai
 domain:mpettis.com
 domain:mpfinance.com
 domain:mpinews.com
