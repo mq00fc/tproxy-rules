@@ -238,6 +238,7 @@ domain:arte.tv
 domain:artstation.com
 domain:arvanstorage.ir
 domain:arweave.org
+domain:as.mr
 domain:asacp.org
 domain:asiaharvest.org
 domain:asianage.com
@@ -681,7 +682,6 @@ domain:cn.theaustralian.com.au
 domain:cn.uptodown.com
 domain:cna.com.tw
 domain:cnbbnews.wordpress.com
-domain:cnbc.com
 domain:cnbeta.com.tw
 domain:cnd.org
 domain:cnnews.chosun.com
@@ -1213,6 +1213,7 @@ domain:gcr.io
 domain:gdaily.org
 domain:geek-art.net
 domain:gekikame.com
+domain:gencraft.com
 domain:generated.photos
 domain:genius.com
 domain:geph.io
@@ -1618,6 +1619,7 @@ domain:heyuedi.com
 domain:hicairo.com
 domain:hiccears.com
 domain:hidden-advent.org
+domain:hiddify.com
 domain:hide.me
 domain:hideipvpn.com
 domain:hideman.net
@@ -2950,7 +2952,6 @@ domain:social.edu.ci
 domain:socialblade.com
 domain:socks-proxy.net
 domain:sockslist.net
-domain:softether-download.com
 domain:softether.co.jp
 domain:softether.org
 domain:softfamous.com
@@ -3476,6 +3477,7 @@ domain:vaticannews.va
 domain:vatn.org
 domain:vcf-online.org
 domain:vcfbuilder.org
+domain:veed.io
 domain:vegas.williamhill.com
 domain:vegasred.com
 domain:venetianmacao.com
@@ -3806,7 +3808,6 @@ domain:yespornplease.com
 domain:yfsp.tv
 domain:yhcw.net
 domain:yibaochina.com
-domain:yidio.com
 domain:yigeni.com
 domain:yipub.com
 domain:yizhihongxing.com
