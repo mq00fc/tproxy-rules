@@ -2921,6 +2921,7 @@ domain:sinoants.com
 domain:sinoca.com
 domain:sinocast.com
 domain:sinoinsider.com
+domain:sinyalee.com
 domain:sis001.com
 domain:site.new
 domain:sitekreator.com
