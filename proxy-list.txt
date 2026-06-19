@@ -12,6 +12,7 @@ domain:1688.com.au
 domain:173ng.com
 domain:18board.com
 domain:18comic.org
+domain:18mh.net
 domain:1984bbs.com
 domain:1991way.com
 domain:1e100.net
@@ -368,6 +369,7 @@ domain:bigjapanesesex.com
 domain:bignews.org
 domain:bigone.com
 domain:bild.de
+domain:bilinovel.com
 domain:binance.com
 domain:binance.org
 domain:binancezh.cc
