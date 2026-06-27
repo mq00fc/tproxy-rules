@@ -119,6 +119,7 @@ domain:aiosearch.com
 domain:aiph.net
 domain:airconsole.com
 domain:airitilibrary.com
+domain:airuniversity.af.edu
 domain:airvpn.org
 domain:ait.org.tw
 domain:aiweiweiblog.com
@@ -1246,6 +1247,7 @@ domain:ganjingworld.com
 domain:gaoming.net
 domain:gartlive.com
 domain:garudalinux.org
+domain:gate.com
 domain:gate.io
 domain:gatecoin.com
 domain:gather.com
@@ -1617,6 +1619,7 @@ domain:gstatic.com
 domain:gtricks.com
 domain:gtv.org
 domain:gtv1.org
+domain:guangming.com.my
 domain:guishan.org
 domain:gumroad.com
 domain:gunsamerica.com
@@ -1698,6 +1701,7 @@ domain:hkgolden.com
 domain:hkgpao.com
 domain:hklts.org.hk
 domain:hkmap.live
+domain:hkong.hk
 domain:hkopentv.com
 domain:hkpeanut.com
 domain:hkreporter.com
@@ -1985,6 +1989,7 @@ domain:kenengba.com
 domain:kepard.com
 domain:kex.com
 domain:keycdn.com
+domain:kfor.com
 domain:khatrimaza.org
 domain:kichiku-doujinko.com
 domain:kik.com
@@ -2586,6 +2591,7 @@ domain:pbs.org
 domain:pbworks.com
 domain:pbxes.com
 domain:pbxes.org
+domain:pcgamesn.com
 domain:pcgamestorrents.com
 domain:pcij.org
 domain:pct.org.tw
@@ -2603,6 +2609,7 @@ domain:peoplenews.tw
 domain:peopo.org
 domain:perfect-privacy.com
 domain:periscope.tv
+domain:perma.cc
 domain:perplexity.ai
 domain:pewresearch.org
 domain:phayul.com
@@ -2840,6 +2847,7 @@ domain:rentry.co
 domain:renyurenquan.org
 domain:resilio.com
 domain:resistchina.org
+domain:restofworld.org
 domain:retweetrank.com
 domain:reuters.com
 domain:reutersmedia.net
@@ -3062,6 +3070,7 @@ domain:southmongolia.org
 domain:southnews.com.tw
 domain:southpark.cc.com
 domain:sowers.org.hk
+domain:spaceforce.mil
 domain:spaces.hightail.com
 domain:spacex.com
 domain:spankbang.com
@@ -3150,6 +3159,7 @@ domain:supchina.com
 domain:superpages.com
 domain:supervpn.net
 domain:support.futunn.com
+domain:supremecourt.gov
 domain:surfeasy.com
 domain:surfshark.com
 domain:surrenderat20.net
@@ -3253,6 +3263,7 @@ domain:thehansindia.com
 domain:thehindu.com
 domain:thehun.net
 domain:theinitium.com
+domain:theintercept.com
 domain:thenewslens.com
 domain:thepiratebay.org
 domain:theporndude.com
@@ -3340,6 +3351,7 @@ domain:tiktokcdn.com
 domain:tiktokv.com
 domain:tiktokv.us
 domain:tiltbrush.com
+domain:time.com
 domain:timesnownews.com
 domain:timesofindia.indiatimes.com
 domain:timtales.com
@@ -3396,6 +3408,7 @@ domain:trendsmap.com
 domain:tronscan.org
 domain:trouw.nl
 domain:trt.net.tr
+domain:trtworld.com
 domain:truebuddha-md.org
 domain:trustwallet.com
 domain:truthsocial.com
@@ -3477,6 +3490,7 @@ domain:twitturk.com
 domain:twitturly.com
 domain:twkan.com
 domain:twreporter.org
+domain:twstalker.com
 domain:twttr.com
 domain:tx.me
 domain:tycool.com
@@ -3672,6 +3686,7 @@ domain:wanz-factory.com
 domain:warroom.org
 domain:waselpro.com
 domain:washingtonpost.com
+domain:washingtontimes.com
 domain:watchinese.com
 domain:watchmygf.net
 domain:watchout.tw
@@ -3866,6 +3881,7 @@ domain:xskywalker.com
 domain:xt.com
 domain:xt.pub
 domain:xtube.com
+domain:xuan.com.my
 domain:xuchao.net
 domain:xuchao.org
 domain:xuehua.us
@@ -4200,7 +4216,6 @@ full:tibetancommunityuk.net
 full:tibetansports.org
 full:tibetanwomen.org
 full:timdir.com
-full:time.com
 full:tl.gd
 full:tmi.me
 full:tmpp.org
