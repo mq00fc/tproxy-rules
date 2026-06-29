@@ -1023,6 +1023,7 @@ domain:expatshield.com
 domain:expecthim.com
 domain:expekt.com
 domain:exploader.net
+domain:expressnews.com
 domain:expressvpn.com
 domain:exrates.me
 domain:extmatrix.com
