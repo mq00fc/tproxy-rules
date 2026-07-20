@@ -670,6 +670,7 @@ domain:civilmedia.tw
 domain:civitai.com
 domain:cixiaoya.club
 domain:ck101.com
+domain:clashyun.com
 domain:classicalguitarblog.net
 domain:claude.ai
 domain:claude.com
@@ -3180,6 +3181,7 @@ domain:synapse.org
 domain:syncback.com
 domain:synergyse.com
 domain:syosetu.com
+domain:sysub.com
 domain:t-g.com
 domain:t.co
 domain:t.me
