@@ -78,6 +78,7 @@ domain:ads-sg.tiktok.com
 domain:ads-video-al.xhscdn.com
 domain:ads-video-qc.xhscdn.com
 domain:ads.95516.com
+domain:ads.adfunlink.com
 domain:ads.auctions.yahoo.com
 domain:ads.cup.com.cn
 domain:ads.google.cn
@@ -135,6 +136,7 @@ domain:adstudio.spotify.com
 domain:adtago.s3.amazonaws.com
 domain:adtech.yahooinc.com
 domain:adtrack.quark.cn
+domain:adtracker.adfunlink.com
 domain:adtracker.medproad.com
 domain:adui.tg.meitu.com
 domain:adv-api.shenshiads.com
@@ -430,7 +432,6 @@ domain:ii.gdt.qq.com
 domain:image-ad.sm.cn
 domain:image.hpplay.cn
 domain:images.outbrainimg.com
-domain:images.pinduoduo.com
 domain:imdns.hpplay.cn
 domain:img-c.heytapimage.com
 domain:img-x.jd.com
@@ -889,7 +890,6 @@ domain:yk-ssp.ad.youku.com
 domain:ykad-data.cp31.ott.cibntv.net
 domain:ykad-data.youku.com
 domain:ykad-gateway.youku.com
-domain:youku-acs.m.taobao.com
 domain:ytx-file.110route.cn
 domain:zeus.ad.xiaomi.com
 domain:zhangyuyidong.cn
