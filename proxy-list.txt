@@ -2065,6 +2065,7 @@ domain:lenwhite.com
 domain:leonardo.ai
 domain:lesoir.be
 domain:letscorp.net
+domain:level-plus.net
 domain:lexica.art
 domain:li.taipei
 domain:liangyou.net
