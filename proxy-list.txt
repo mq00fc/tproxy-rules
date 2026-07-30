@@ -3577,6 +3577,7 @@ domain:uyghurcongress.org
 domain:uyghurpen.org
 domain:uyghurstudies.org
 domain:uyghurtribunal.com
+domain:v.recipes
 domain:v2.help
 domain:v2.hysteria.network
 domain:v2ex.com
