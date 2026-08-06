@@ -273,7 +273,6 @@ domain:atlanta168.com
 domain:atnext.com
 domain:auctions.yahoo.co.jp
 domain:audacy.com
-domain:auntology.fandom.com
 domain:autodraw.com
 domain:av.movie
 domain:av01.tv
@@ -1063,6 +1062,7 @@ domain:falundafaindia.org
 domain:falunhr.org
 domain:famunion.com
 domain:fanbox.cc
+domain:fandom.com
 domain:fangeqiang.com
 domain:fanglizhi.info
 domain:fangong.org
@@ -1722,7 +1722,6 @@ domain:hole.thu.monster
 domain:holyspiritspeaks.org
 domain:home.saxo
 domain:homedepot.com
-domain:hongkong.fandom.com
 domain:hongkongfp.com
 domain:hongzhi.li
 domain:honven.xyz
