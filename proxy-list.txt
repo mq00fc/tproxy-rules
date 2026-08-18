@@ -3782,6 +3782,7 @@ domain:wiktionary.org
 domain:willw.net
 domain:wilsoncenter.org
 domain:windscribe.com
+domain:windy.com
 domain:wingamestore.com
 domain:wingy.site
 domain:wionews.com
