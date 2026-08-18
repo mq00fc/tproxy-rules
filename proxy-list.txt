@@ -2908,6 +2908,7 @@ domain:rutracker.org
 domain:s-cute.com
 domain:s.yimg.com
 domain:s3-ap-northeast-1.amazonaws.com
+domain:s3.dualstack.us-west-2.amazonaws.com
 domain:sacks.com
 domain:sacom.hk
 domain:sadistic-v.com
