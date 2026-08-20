@@ -492,7 +492,6 @@ domain:log-verify.dutils.com
 domain:log-verify.hiaiabc.com
 domain:log.ad.xiaomi.com
 domain:log.aispeech.com
-domain:log.aliyuncs.com
 domain:log.amemv.com
 domain:log.appstore3.huan.tv
 domain:log.avlyun.com
