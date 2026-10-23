@@ -746,6 +746,7 @@ comparitech.com
 compileheart.com
 connect.facebook.net
 conoha.jp
+console.typesafe.ai
 contests.twilio.com
 cool18.com
 coolaler.com
@@ -1529,6 +1530,7 @@ g-queen.com
 g.ai
 g.co
 g0v.social
+ga.jspm.io
 gab.com
 gabocorp.com
 gagaoolala.com
