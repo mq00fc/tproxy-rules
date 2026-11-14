@@ -248,6 +248,7 @@ DOMAIN-SUFFIX,api.touch-moblie.com
 DOMAIN-SUFFIX,api.yfanads.com
 DOMAIN-SUFFIX,api5-normal-quic-lf.ixigua.com
 DOMAIN-SUFFIX,apiyd.my91app.com
+DOMAIN-SUFFIX,apmplus.volces.com
 DOMAIN-SUFFIX,app-measurement.com
 DOMAIN-SUFFIX,appcfg.v.qq.com
 DOMAIN-SUFFIX,applog-perf.uc.cn
@@ -320,6 +321,7 @@ DOMAIN-SUFFIX,click.googleanalytics.com
 DOMAIN-SUFFIX,click.liftoff.io
 DOMAIN-SUFFIX,click.oneplus.cn
 DOMAIN-SUFFIX,click4.chinaliftoff.io
+DOMAIN-SUFFIX,client-upload.cn-shanghai.log.aliyuncs.com
 DOMAIN-SUFFIX,clog.miguvideo.com
 DOMAIN-SUFFIX,cloooud.com
 DOMAIN-SUFFIX,cn-api.anythinktech.com
@@ -361,6 +363,7 @@ DOMAIN-SUFFIX,downloadxml.changhong.upgrade2.huan.tv
 DOMAIN-SUFFIX,dsp-x.jd.com
 DOMAIN-SUFFIX,dsp.fcbox.com
 DOMAIN-SUFFIX,dsplog-adnet.vivo.com.cn
+DOMAIN-SUFFIX,du-app.cn-hangzhou.log.aliyuncs.com
 DOMAIN-SUFFIX,dualstack-logs.amap.com
 DOMAIN-SUFFIX,dxp.baidu.com
 DOMAIN-SUFFIX,dyp2p-ali.douyucdn.cn
@@ -371,6 +374,7 @@ DOMAIN-SUFFIX,edge.ads.twitch.tv
 DOMAIN-SUFFIX,ef-dongfeng.tanx.com
 DOMAIN-SUFFIX,engine.dcad01.com
 DOMAIN-SUFFIX,entry.baidu.com
+DOMAIN-SUFFIX,errnewlog.umeng.com
 DOMAIN-SUFFIX,et-eus.w.inmobi.com
 DOMAIN-SUFFIX,event.tradplusad.com
 DOMAIN-SUFFIX,events-drcn.op.dbankcloud.cn
@@ -383,6 +387,7 @@ DOMAIN-SUFFIX,feed-image.baidu.com
 DOMAIN-SUFFIX,file.daihuo.qq.com
 DOMAIN-SUFFIX,firebaselogging-pa.googleapis.com
 DOMAIN-SUFFIX,flurry.com
+DOMAIN-SUFFIX,fp-it.fengkongcloud.com
 DOMAIN-SUFFIX,frontend-perf-service.e.kuaishou.com
 DOMAIN-SUFFIX,fxgate.baidu.com
 DOMAIN-SUFFIX,g-adnet.hiaiabc.com
@@ -497,6 +502,7 @@ DOMAIN-SUFFIX,kwpush.kuwo.cn
 DOMAIN-SUFFIX,l6.fancyapi.com
 DOMAIN-SUFFIX,launcher.smart-tv.cn
 DOMAIN-SUFFIX,launcherimg.smart-tv.cn
+DOMAIN-SUFFIX,lf-event-manager.oceanengine.com
 DOMAIN-SUFFIX,lf3-ad-union-sdk.pglstatp-toutiao.com
 DOMAIN-SUFFIX,lf6-ad-union-sdk.pglstatp-toutiao.com
 DOMAIN-SUFFIX,lftxali.fancyapi.com
@@ -515,6 +521,7 @@ DOMAIN-SUFFIX,log-api-mn.huxiu.com
 DOMAIN-SUFFIX,log-api.huxiu.com
 DOMAIN-SUFFIX,log-api.pangolin-sdk-toutiao-b.com
 DOMAIN-SUFFIX,log-api.pangolin-sdk-toutiao.com
+DOMAIN-SUFFIX,log-auth.zztfly.com
 DOMAIN-SUFFIX,log-report.com
 DOMAIN-SUFFIX,log-sdk.gifshow.com
 DOMAIN-SUFFIX,log-sdk.ksapisrv.com
@@ -754,6 +761,8 @@ DOMAIN-SUFFIX,service.changhong.upgrade2.huan.tv
 DOMAIN-SUFFIX,service.vmos.cn
 DOMAIN-SUFFIX,sf16-static.i18n-pglstatp.com
 DOMAIN-SUFFIX,sf3-fe-tos.pglstatp-toutiao.com
+DOMAIN-SUFFIX,shihuo-new.log.shihuocdn.cn
+DOMAIN-SUFFIX,shihuo.log.shihuocdn.cn
 DOMAIN-SUFFIX,shouji.sogou.com
 DOMAIN-SUFFIX,sigmob.com
 DOMAIN-SUFFIX,skdisplay.jd.com
@@ -870,6 +879,7 @@ DOMAIN-SUFFIX,umini.shujupie.com
 DOMAIN-SUFFIX,union-mlog.bigda.com
 DOMAIN-SUFFIX,union-record.oss-cn-zhangjiakou.aliyuncs.com
 DOMAIN-SUFFIX,unityads.unity3d.com
+DOMAIN-SUFFIX,upc.zztfly.com
 DOMAIN-SUFFIX,update.avlyun.sec.miui.com
 DOMAIN-SUFFIX,update.lejiao.tv
 DOMAIN-SUFFIX,update0.aiclk.com
