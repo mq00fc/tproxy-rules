@@ -124,6 +124,7 @@ agoogleaday.com
 agro.hk
 ai.dev
 ai.studio
+aicu.cc
 aidc.com.tw
 aihub.top
 aiosearch.com
@@ -837,6 +838,7 @@ dalianmeng.org
 daliulian.org
 danbooru.donmai.us
 danke4china.net
+danmakus.com
 darmau.co
 darpa.mil
 darrenliuwei.com
@@ -3436,6 +3438,7 @@ southmongolia.org
 southnews.com.tw
 southpark.cc.com
 sowers.org.hk
+spacedesk.net
 spaceforce.mil
 spaces.hightail.com
 spacex.com
