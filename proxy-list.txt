@@ -1,6 +1,7 @@
 .gle
 .goog
 .google
+.org
 000webhost.com
 1-apple.com.tw
 1000giri.net
